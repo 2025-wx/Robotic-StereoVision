@@ -268,11 +268,12 @@ set(node_plugins "${node_plugins}stereolabs::ZedCamera;$<TARGET_FILE:zed_camera_
 #     ${DEPENDENCIES}
 # )
 
-rclcpp_components_register_nodes(zed_camera_one_component "stereolabs::ZedCameraOne")
-set(node_plugins "${node_plugins}stereolabs::ZedCameraOne;$<TARGET_FILE:zed_camera_one_component>\n")
+# rclcpp_components_register_nodes(zed_camera_one_component "stereolabs::ZedCameraOne")
+# set(node_plugins "${node_plugins}stereolabs::ZedCameraOne;$<TARGET_FILE:zed_camera_one_component>\n")
 
 # Install components
-install(TARGETS zed_camera_component zed_camera_one_component
+install(TARGETS zed_camera_component 
+# zed_camera_one_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
