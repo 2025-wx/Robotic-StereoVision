@@ -25,7 +25,7 @@
 #include <vector>
 #include <sstream>
 
-// #include "gnss_replay.hpp"
+#include "gnss_replay.hpp"
 #include "sl_win_avg.hpp"
 
 #include <rcutils/logging_macros.h>

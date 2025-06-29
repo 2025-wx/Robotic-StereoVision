@@ -1000,7 +1000,7 @@ private:
   // <---- Services names
 
   // ----> SVO v2
-  // std::unique_ptr<sl_tools::GNSSReplay> mGnssReplay;
+  std::unique_ptr<sl_tools::GNSSReplay> mGnssReplay;
   // <---- SVO v2
 };
 

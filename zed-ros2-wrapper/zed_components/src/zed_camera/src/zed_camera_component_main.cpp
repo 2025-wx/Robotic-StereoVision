@@ -2536,19 +2536,19 @@ bool ZedCamera::startCamera()
 
 
   // ----> If SVO and GNSS enabled check that it's a valid SV0 Gen.2
-  // if (mSvoMode && mGnssFusionEnabled) {
+  if (mSvoMode && mGnssFusionEnabled) {
   //   // TODO(Walter) Check SVO version when it's available
 
-  //   mGnssReplay = std::make_unique<sl_tools::GNSSReplay>(mZed);
-  //   if (!mGnssReplay->initialize()) {
-  //     RCLCPP_ERROR(get_logger(), "The SVO file does not contain valid GNSS information.");
-  //     return false;
-  //   } else {
-  //     RCLCPP_INFO(
-  //       get_logger(),
-  //       "GNSS information will be retrieved from the SVO file.");
-  //   }
-  // }
+    mGnssReplay = std::make_unique<sl_tools::GNSSReplay>(mZed);
+    if (!mGnssReplay->initialize()) {
+      RCLCPP_ERROR(get_logger(), "The SVO file does not contain valid GNSS information.");
+      return false;
+    } else {
+      RCLCPP_INFO(
+        get_logger(),
+        "GNSS information will be retrieved from the SVO file.");
+    }
+  }
   // <---- If SVO and GNSS enabled check that it's a valid SV0 Gen.2
 
   // ----> If SVO and positional tracking Gen2 check that it's a valid SV0 Gen2
@@ -7409,239 +7409,239 @@ void ZedCamera::callback_gnssPubTimerTimeout()
   mGnssPubCheckTimer.reset();
 }
 
-// void ZedCamera::processSvoGnssData()
-// {
-//   if (!mGnssReplay) {
-//     mGnssFixValid = false;
-//     return;
-//   }
-//   uint64_t current_ts = mLastZedPose.timestamp.getNanoseconds();
-//   static uint64_t old_gnss_ts = 0;
+void ZedCamera::processSvoGnssData()
+{
+  if (!mGnssReplay) {
+    mGnssFixValid = false;
+    return;
+  }
+  uint64_t current_ts = mLastZedPose.timestamp.getNanoseconds();
+  static uint64_t old_gnss_ts = 0;
 
-//   if (current_ts == old_gnss_ts) {
-//     return;
-//   }
-//   old_gnss_ts = current_ts;
+  if (current_ts == old_gnss_ts) {
+    return;
+  }
+  old_gnss_ts = current_ts;
 
-//   // DEBUG_STREAM_GNSS("Retrieving GNSS data from SVO. TS: " << current_ts
-//   //                                                         << " nsec");
+  // DEBUG_STREAM_GNSS("Retrieving GNSS data from SVO. TS: " << current_ts
+  //                                                         << " nsec");
 
-//   sl::GNSSData gnssData;
-//   auto err = mGnssReplay->grab(gnssData, current_ts);
-//   if (err != sl::FUSION_ERROR_CODE::SUCCESS) {
-//     //DEBUG_STREAM_GNSS("Error grabbing GNSS data from SVO: " << sl::toString(err));
-//     return;
-//   }
+  sl::GNSSData gnssData;
+  auto err = mGnssReplay->grab(gnssData, current_ts);
+  if (err != sl::FUSION_ERROR_CODE::SUCCESS) {
+    //DEBUG_STREAM_GNSS("Error grabbing GNSS data from SVO: " << sl::toString(err));
+    return;
+  }
 
-//   mGnssMsgReceived = true;
+  mGnssMsgReceived = true;
 
-//   // ----> GNSS Fix stats
-//   double elapsed_sec = mGnssFixFreqTimer.toc();
-//   mGnssFix_sec->addValue(elapsed_sec);
-//   mGnssFixFreqTimer.tic();
-//   // <---- GNSS Fix stats
+  // ----> GNSS Fix stats
+  double elapsed_sec = mGnssFixFreqTimer.toc();
+  mGnssFix_sec->addValue(elapsed_sec);
+  mGnssFixFreqTimer.tic();
+  // <---- GNSS Fix stats
 
-//   double latitude;
-//   double longitude;
-//   double altitude;
+  double latitude;
+  double longitude;
+  double altitude;
 
-//   gnssData.getCoordinates(latitude, longitude, altitude, false);
-//   mGnssTimestamp = rclcpp::Time(gnssData.ts.getNanoseconds(), RCL_ROS_TIME);
+  gnssData.getCoordinates(latitude, longitude, altitude, false);
+  mGnssTimestamp = rclcpp::Time(gnssData.ts.getNanoseconds(), RCL_ROS_TIME);
 
-//   DEBUG_STREAM_GNSS(
-//     "Latest GNSS data from SVO - ["
-//       << mGnssTimestamp.nanoseconds() << " nsec] " << latitude
-//       << "°," << longitude << "° / " << altitude << " m");
+  DEBUG_STREAM_GNSS(
+    "Latest GNSS data from SVO - ["
+      << mGnssTimestamp.nanoseconds() << " nsec] " << latitude
+      << "°," << longitude << "° / " << altitude << " m");
 
-//   std::stringstream ss;
-//   for (size_t i = 0; i < gnssData.position_covariance.size(); i++) {
-//     ss << gnssData.position_covariance[i];
-//     if (i != gnssData.position_covariance.size() - 1) {ss << ", ";}
-//   }
-//   DEBUG_STREAM_GNSS("Covariance- [" << ss.str() << "]");
-//   DEBUG_STREAM_GNSS("GNSS Status: " << sl::toString(gnssData.gnss_status));
+  std::stringstream ss;
+  for (size_t i = 0; i < gnssData.position_covariance.size(); i++) {
+    ss << gnssData.position_covariance[i];
+    if (i != gnssData.position_covariance.size() - 1) {ss << ", ";}
+  }
+  DEBUG_STREAM_GNSS("Covariance- [" << ss.str() << "]");
+  DEBUG_STREAM_GNSS("GNSS Status: " << sl::toString(gnssData.gnss_status));
 
-//   if (gnssData.gnss_status == sl::GNSS_STATUS::UNKNOWN) {
-//     gnssData.gnss_status = sl::GNSS_STATUS::SINGLE;
-//     DEBUG_STREAM_GNSS(" * Forced to: " << sl::toString(gnssData.gnss_status));
-//   }
+  if (gnssData.gnss_status == sl::GNSS_STATUS::UNKNOWN) {
+    gnssData.gnss_status = sl::GNSS_STATUS::SINGLE;
+    DEBUG_STREAM_GNSS(" * Forced to: " << sl::toString(gnssData.gnss_status));
+  }
 
-//   DEBUG_STREAM_GNSS("GNSS Mode: " << sl::toString(gnssData.gnss_mode));
+  DEBUG_STREAM_GNSS("GNSS Mode: " << sl::toString(gnssData.gnss_mode));
 
-//   mGnssFixValid = true;   // Used to keep track of signal loss
+  mGnssFixValid = true;   // Used to keep track of signal loss
 
-//   if (mZed->isOpened() && mZed->isPositionalTrackingEnabled()) {
-//     auto ingest_error = mFusion.ingestGNSSData(gnssData);
-//     if (ingest_error == sl::FUSION_ERROR_CODE::SUCCESS) {
-//       DEBUG_STREAM_GNSS(
-//         "Datum ingested - ["
-//           << mGnssTimestamp.nanoseconds() << " nsec] " << latitude
-//           << "°," << longitude << "° / " << altitude << " m");
-//     } else {
-//       RCLCPP_ERROR_STREAM(
-//         get_logger(),
-//         "Ingest error occurred when ingesting GNSSData: "
-//           << sl::toString(ingest_error));
-//     }
-//     mGnssFixNew = true;
-//   }
-// }
+  if (mZed->isOpened() && mZed->isPositionalTrackingEnabled()) {
+    auto ingest_error = mFusion.ingestGNSSData(gnssData);
+    if (ingest_error == sl::FUSION_ERROR_CODE::SUCCESS) {
+      DEBUG_STREAM_GNSS(
+        "Datum ingested - ["
+          << mGnssTimestamp.nanoseconds() << " nsec] " << latitude
+          << "°," << longitude << "° / " << altitude << " m");
+    } else {
+      RCLCPP_ERROR_STREAM(
+        get_logger(),
+        "Ingest error occurred when ingesting GNSSData: "
+          << sl::toString(ingest_error));
+    }
+    mGnssFixNew = true;
+  }
+}
 
-// void ZedCamera::callback_gnssFix(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
-// {
-//   sl::GNSSData gnssData;
+void ZedCamera::callback_gnssFix(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
+{
+  sl::GNSSData gnssData;
 
-//   // ----> GNSS Fix stats
-//   double elapsed_sec = mGnssFixFreqTimer.toc();
-//   mGnssFix_sec->addValue(elapsed_sec);
-//   mGnssFixFreqTimer.tic();
-//   // <---- GNSS Fix stats
+  // ----> GNSS Fix stats
+  double elapsed_sec = mGnssFixFreqTimer.toc();
+  mGnssFix_sec->addValue(elapsed_sec);
+  mGnssFixFreqTimer.tic();
+  // <---- GNSS Fix stats
 
-//   if (!mGnssPubCheckTimer) {
-//     std::chrono::milliseconds gnssTimeout_msec(static_cast<int>(2000.0));
-//     mGnssPubCheckTimer = create_wall_timer(
-//       std::chrono::duration_cast<std::chrono::milliseconds>(
-//         gnssTimeout_msec),
-//       std::bind(&ZedCamera::callback_gnssPubTimerTimeout, this));
-//   } else {
-//     mGnssPubCheckTimer->reset();
-//   }
+  if (!mGnssPubCheckTimer) {
+    std::chrono::milliseconds gnssTimeout_msec(static_cast<int>(2000.0));
+    mGnssPubCheckTimer = create_wall_timer(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+        gnssTimeout_msec),
+      std::bind(&ZedCamera::callback_gnssPubTimerTimeout, this));
+  } else {
+    mGnssPubCheckTimer->reset();
+  }
 
-//   mGnssMsgReceived = true;
+  mGnssMsgReceived = true;
 
-//   RCLCPP_INFO_ONCE(get_logger(), "=== GNSS subscriber ===");
-//   RCLCPP_INFO_ONCE(
-//     get_logger(),
-//     " * First message received. GNSS Sender active.");
+  RCLCPP_INFO_ONCE(get_logger(), "=== GNSS subscriber ===");
+  RCLCPP_INFO_ONCE(
+    get_logger(),
+    " * First message received. GNSS Sender active.");
 
-//   mGnssServiceStr = "";
-//   mGnssService = msg->status.service;
-//   if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GPS) {
-//     mGnssServiceStr += "GPS ";
-//   }
-//   if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GLONASS) {
-//     mGnssServiceStr += "GLONASS ";
-//   }
-//   if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_COMPASS) {
-//     mGnssServiceStr += "COMPASS ";
-//   }
-//   if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GALILEO) {
-//     mGnssServiceStr += "GALILEO";
-//   }
+  mGnssServiceStr = "";
+  mGnssService = msg->status.service;
+  if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GPS) {
+    mGnssServiceStr += "GPS ";
+  }
+  if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GLONASS) {
+    mGnssServiceStr += "GLONASS ";
+  }
+  if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_COMPASS) {
+    mGnssServiceStr += "COMPASS ";
+  }
+  if (mGnssService & sensor_msgs::msg::NavSatStatus::SERVICE_GALILEO) {
+    mGnssServiceStr += "GALILEO";
+  }
 
-//   RCLCPP_INFO_STREAM_ONCE(
-//     get_logger(),
-//     " * Service: " << mGnssServiceStr.c_str());
+  RCLCPP_INFO_STREAM_ONCE(
+    get_logger(),
+    " * Service: " << mGnssServiceStr.c_str());
 
-//   if (msg->status.status == sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX) {
-//     DEBUG_GNSS("callback_gnssFix: fix not valid");
-//     if (mGnssFixValid) {
-//       RCLCPP_INFO(get_logger(), "GNSS: signal lost.");
-//     }
-//     mGnssFixValid = false;
+  if (msg->status.status == sensor_msgs::msg::NavSatStatus::STATUS_NO_FIX) {
+    DEBUG_GNSS("callback_gnssFix: fix not valid");
+    if (mGnssFixValid) {
+      RCLCPP_INFO(get_logger(), "GNSS: signal lost.");
+    }
+    mGnssFixValid = false;
 
-//     return;
-//   }
+    return;
+  }
 
-//   switch (msg->status.status) {
-//     case ::sensor_msgs::msg::NavSatStatus::STATUS_SBAS_FIX:
-//       gnssData.gnss_status = sl::GNSS_STATUS::RTK_FIX;
-//       break;
-//     case ::sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX:
-//       gnssData.gnss_status = sl::GNSS_STATUS::RTK_FLOAT;
-//       break;
-//     case ::sensor_msgs::msg::NavSatStatus::STATUS_FIX:
-//     default:
-//       gnssData.gnss_status = sl::GNSS_STATUS::SINGLE;
-//       break;
-//   }
+  switch (msg->status.status) {
+    case ::sensor_msgs::msg::NavSatStatus::STATUS_SBAS_FIX:
+      gnssData.gnss_status = sl::GNSS_STATUS::RTK_FIX;
+      break;
+    case ::sensor_msgs::msg::NavSatStatus::STATUS_GBAS_FIX:
+      gnssData.gnss_status = sl::GNSS_STATUS::RTK_FLOAT;
+      break;
+    case ::sensor_msgs::msg::NavSatStatus::STATUS_FIX:
+    default:
+      gnssData.gnss_status = sl::GNSS_STATUS::SINGLE;
+      break;
+  }
 
-//   // ----> Check timestamp
-//   // Note: this is the ROS timestamp, not the GNSS timestamp that is available
-//   // in a
-//   //       "sensor_msgs/TimeReference message", e.g. `/time_reference`
-//   uint64_t ts_gnss_part_sec =
-//     static_cast<uint64_t>(msg->header.stamp.sec) * 1000000000;
-//   uint64_t ts_gnss_part_nsec =
-//     static_cast<uint64_t>(msg->header.stamp.nanosec);
-//   uint64_t ts_gnss_nsec = ts_gnss_part_sec + ts_gnss_part_nsec;
+  // ----> Check timestamp
+  // Note: this is the ROS timestamp, not the GNSS timestamp that is available
+  // in a
+  //       "sensor_msgs/TimeReference message", e.g. `/time_reference`
+  uint64_t ts_gnss_part_sec =
+    static_cast<uint64_t>(msg->header.stamp.sec) * 1000000000;
+  uint64_t ts_gnss_part_nsec =
+    static_cast<uint64_t>(msg->header.stamp.nanosec);
+  uint64_t ts_gnss_nsec = ts_gnss_part_sec + ts_gnss_part_nsec;
 
-//   DEBUG_STREAM_GNSS(
-//     "GNSS Ts: " << ts_gnss_part_sec / 1000000000 << " sec + "
-//                 << ts_gnss_part_nsec << " nsec = "
-//                 << ts_gnss_nsec << " nsec fused");
+  DEBUG_STREAM_GNSS(
+    "GNSS Ts: " << ts_gnss_part_sec / 1000000000 << " sec + "
+                << ts_gnss_part_nsec << " nsec = "
+                << ts_gnss_nsec << " nsec fused");
 
-//   if (ts_gnss_nsec <= mLastTs_gnss_nsec) {
-//     DEBUG_GNSS(
-//       "callback_gnssFix: data not valid (timestamp did not increment)");
-//     return;
-//   }
+  if (ts_gnss_nsec <= mLastTs_gnss_nsec) {
+    DEBUG_GNSS(
+      "callback_gnssFix: data not valid (timestamp did not increment)");
+    return;
+  }
 
-//   DEBUG_STREAM_GNSS(
-//     "GNSS dT: " << ts_gnss_nsec - mLastTs_gnss_nsec
-//                 << " nsec");
-//   mLastTs_gnss_nsec = ts_gnss_nsec;
-//   // <---- Check timestamp
+  DEBUG_STREAM_GNSS(
+    "GNSS dT: " << ts_gnss_nsec - mLastTs_gnss_nsec
+                << " nsec");
+  mLastTs_gnss_nsec = ts_gnss_nsec;
+  // <---- Check timestamp
 
-//   mGnssTimestamp = rclcpp::Time(ts_gnss_nsec, RCL_ROS_TIME);
-//   DEBUG_STREAM_GNSS("Stored Ts: " << mGnssTimestamp.nanoseconds());
+  mGnssTimestamp = rclcpp::Time(ts_gnss_nsec, RCL_ROS_TIME);
+  DEBUG_STREAM_GNSS("Stored Ts: " << mGnssTimestamp.nanoseconds());
 
-//   double altit = msg->altitude;
-//   if (mGnssZeroAltitude) {
-//     altit = 0.0;
-//   }
-//   double latit = msg->latitude;
-//   double longit = msg->longitude;
+  double altit = msg->altitude;
+  if (mGnssZeroAltitude) {
+    altit = 0.0;
+  }
+  double latit = msg->latitude;
+  double longit = msg->longitude;
 
-//   // std::lock_guard<std::mutex> lock(mGnssDataMutex);
-//   gnssData.ts.setNanoseconds(ts_gnss_nsec);
-//   gnssData.setCoordinates(latit, longit, altit, false);
+  // std::lock_guard<std::mutex> lock(mGnssDataMutex);
+  gnssData.ts.setNanoseconds(ts_gnss_nsec);
+  gnssData.setCoordinates(latit, longit, altit, false);
 
-//   if (msg->position_covariance_type !=
-//     sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN)
-//   {
-//     gnssData.latitude_std = msg->position_covariance[0];
-//     gnssData.longitude_std = msg->position_covariance[1 * 3 + 1];
-//     gnssData.altitude_std = msg->position_covariance[2 * 3 + 2];
-//     if (mGnssZeroAltitude) {
-//       gnssData.altitude_std = 1e-9;
-//     }
-//     std::array<double, 9> position_covariance;
-//     position_covariance[0] = gnssData.latitude_std * mGnssHcovMul;    // X
-//     position_covariance[1 * 3 + 1] =
-//       gnssData.longitude_std * mGnssHcovMul;      // Y
-//     position_covariance[2 * 3 + 2] =
-//       gnssData.altitude_std * mGnssVcovMul;      // Z
-//     gnssData.position_covariance = position_covariance;
-//   }
+  if (msg->position_covariance_type !=
+    sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN)
+  {
+    gnssData.latitude_std = msg->position_covariance[0];
+    gnssData.longitude_std = msg->position_covariance[1 * 3 + 1];
+    gnssData.altitude_std = msg->position_covariance[2 * 3 + 2];
+    if (mGnssZeroAltitude) {
+      gnssData.altitude_std = 1e-9;
+    }
+    std::array<double, 9> position_covariance;
+    position_covariance[0] = gnssData.latitude_std * mGnssHcovMul;    // X
+    position_covariance[1 * 3 + 1] =
+      gnssData.longitude_std * mGnssHcovMul;      // Y
+    position_covariance[2 * 3 + 2] =
+      gnssData.altitude_std * mGnssVcovMul;      // Z
+    gnssData.position_covariance = position_covariance;
+  }
 
-//   if (!mGnssFixValid) {
-//     DEBUG_GNSS("GNSS: valid fix received.");
-//     DEBUG_STREAM_GNSS(
-//       " * First valid datum - Lat: "
-//         << std::fixed << std::setprecision(9) << latit
-//         << "° - Long: " << longit << "° - Alt: " << altit
-//         << " m");
-//   }
+  if (!mGnssFixValid) {
+    DEBUG_GNSS("GNSS: valid fix received.");
+    DEBUG_STREAM_GNSS(
+      " * First valid datum - Lat: "
+        << std::fixed << std::setprecision(9) << latit
+        << "° - Long: " << longit << "° - Alt: " << altit
+        << " m");
+  }
 
-//   mGnssFixValid = true;    // Used to keep track of signal loss
+  mGnssFixValid = true;    // Used to keep track of signal loss
 
-//   if (mZed->isOpened() && mZed->isPositionalTrackingEnabled()) {
-//     auto ingest_error = mFusion.ingestGNSSData(gnssData);
-//     if (ingest_error == sl::FUSION_ERROR_CODE::SUCCESS) {
-//       DEBUG_STREAM_GNSS(
-//         "Datum ingested - ["
-//           << mGnssTimestamp.nanoseconds() << " nsec] " << latit
-//           << "°," << longit << "° / " << altit << " m");
-//     } else {
-//       RCLCPP_ERROR_STREAM(
-//         get_logger(),
-//         "Ingest error occurred when ingesting GNSSData: "
-//           << sl::toString(ingest_error));
-//     }
-//     mGnssFixNew = true;
-//   }
-// }
+  if (mZed->isOpened() && mZed->isPositionalTrackingEnabled()) {
+    auto ingest_error = mFusion.ingestGNSSData(gnssData);
+    if (ingest_error == sl::FUSION_ERROR_CODE::SUCCESS) {
+      DEBUG_STREAM_GNSS(
+        "Datum ingested - ["
+          << mGnssTimestamp.nanoseconds() << " nsec] " << latit
+          << "°," << longit << "° / " << altit << " m");
+    } else {
+      RCLCPP_ERROR_STREAM(
+        get_logger(),
+        "Ingest error occurred when ingesting GNSSData: "
+          << sl::toString(ingest_error));
+    }
+    mGnssFixNew = true;
+  }
+}
 
 void ZedCamera::callback_clickedPoint(
   const geometry_msgs::msg::PointStamped::SharedPtr msg)

@@ -159,12 +159,7 @@ def launch_setup(context, *args, **kwargs):
         node_name_val = camera_name_val
     
     # Common configuration file
-    if (camera_model_val == 'zed' or 
-        camera_model_val == 'zedm' or 
-        camera_model_val == 'zed2' or 
-        camera_model_val == 'zed2i' or 
-        camera_model_val == 'zedx' or 
-        camera_model_val == 'zedxm' or
+    if (camera_model_val == 'zedxm' or
         camera_model_val == 'virtual'):
         config_common_path_val = default_config_common + '_stereo.yaml'
     else:
@@ -304,12 +299,7 @@ def launch_setup(context, *args, **kwargs):
 
 
     # ZED Wrapper component
-    if( camera_model_val=='zed' or
-        camera_model_val=='zedm' or
-        camera_model_val=='zed2' or
-        camera_model_val=='zed2i' or
-        camera_model_val=='zedx' or
-        camera_model_val=='zedxm' or
+    if( camera_model_val=='zedxm' or
         camera_model_val=='virtual'):
         zed_wrapper_component = ComposableNode(
             package='zed_components',
@@ -319,15 +309,15 @@ def launch_setup(context, *args, **kwargs):
             parameters=node_parameters,
             extra_arguments=[{'use_intra_process_comms': True}]
         )
-    else: # 'zedxonegs' or 'zedxone4k')
-        zed_wrapper_component = ComposableNode(
-            package='zed_components',
-            namespace=namespace_val,
-            plugin='stereolabs::ZedCameraOne',
-            name=node_name_val,
-            parameters=node_parameters,
-            extra_arguments=[{'use_intra_process_comms': True}]
-        )
+    # else: # 'zedxonegs' or 'zedxone4k')
+    #     zed_wrapper_component = ComposableNode(
+    #         package='zed_components',
+    #         namespace=namespace_val,
+    #         plugin='stereolabs::ZedCameraOne',
+    #         name=node_name_val,
+    #         parameters=node_parameters,
+    #         extra_arguments=[{'use_intra_process_comms': True}]
+    #     )
     
     full_container_name = '/' + namespace_val + '/' + container_name_val
     info = 'Loading ZED node `' + node_name_val + '` in container `' + full_container_name + '`'
