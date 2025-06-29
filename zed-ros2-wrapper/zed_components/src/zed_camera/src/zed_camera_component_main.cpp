@@ -362,7 +362,7 @@ void ZedCamera::initServices()
   }
 #endif
 
-    Set Service for SVO frame
+    // Set Service for SVO frame
     srv_name = srv_prefix + mSrvSetSvoFrameName;
     mSetSvoFrameSrv = create_service<zed_msgs::srv::SetSvoFrame>(
       srv_name,
