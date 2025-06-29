@@ -45,19 +45,19 @@ def launch_setup(context, *args, **kwargs):
     if (camera_name_val == ''):
         camera_name_val = 'zed'
 
-    camera_type = ''
-    if( camera_model_val=='zedxm' or
-        camera_model_val=='virtual'):
-        camera_type = 'stereo'
-    else: # 'zedxonegs' or 'zedxone4k')
-        camera_type = 'mono'
+    # camera_type = ''
+    # if( camera_model_val=='zedxm' or
+    #     camera_model_val=='virtual'):
+    #     camera_type = 'stereo'
+    # else: # 'zedxonegs' or 'zedxone4k')
+    #     camera_type = 'mono'
 
     # RVIZ2 Configurations to be loaded by ZED Node
-    config_rviz2 = os.path.join(
-        get_package_share_directory('zed_display_rviz2'),
-        'rviz2',
-        'zed_' + camera_type + '.rviz'
-    )
+    # config_rviz2 = os.path.join(
+    #     get_package_share_directory('zed_display_rviz2'),
+    #     'rviz2',
+    #     'zed_' + camera_type + '.rviz'
+    # )
 
     # RVIZ2 node
     # rviz2_node = Node(

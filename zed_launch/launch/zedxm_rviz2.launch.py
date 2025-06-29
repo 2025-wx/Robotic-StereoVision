@@ -52,7 +52,7 @@ def launch_setup(context, *args, **kwargs):
 
     # RVIZ2 Configurations to be loaded by ZED Node
     config_rviz2 = os.path.join(
-        get_package_share_directory('zed_display_rviz2'),
+        get_package_share_directory('zed_launch'),
         'rviz2',
         'zed_' + camera_type + '.rviz'
     )
