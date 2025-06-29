@@ -317,82 +317,82 @@ void ZedCamera::initServices()
     RCLCPP_INFO(get_logger(), " * '%s'", mEnableObjDetSrv->get_service_name());
 
     // Enable BodyTracking
-    // srv_name = srv_prefix + mSrvEnableBodyTrkName;
-    // mEnableBodyTrkSrv = create_service<std_srvs::srv::SetBool>(
-    //   srv_name,
-    //   std::bind(&ZedCamera::callback_enableBodyTrk, this, _1, _2, _3));
-    // RCLCPP_INFO(get_logger(), " * '%s'", mEnableBodyTrkSrv->get_service_name());
+    srv_name = srv_prefix + mSrvEnableBodyTrkName;
+    mEnableBodyTrkSrv = create_service<std_srvs::srv::SetBool>(
+      srv_name,
+      std::bind(&ZedCamera::callback_enableBodyTrk, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mEnableBodyTrkSrv->get_service_name());
 
     // Enable Mapping
-    // srv_name = srv_prefix + mSrvEnableMappingName;
-    // mEnableMappingSrv = create_service<std_srvs::srv::SetBool>(
-    //   srv_name,
-    //   std::bind(&ZedCamera::callback_enableMapping, this, _1, _2, _3));
-    // RCLCPP_INFO(get_logger(), " * '%s'", mEnableMappingSrv->get_service_name());
+    srv_name = srv_prefix + mSrvEnableMappingName;
+    mEnableMappingSrv = create_service<std_srvs::srv::SetBool>(
+      srv_name,
+      std::bind(&ZedCamera::callback_enableMapping, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mEnableMappingSrv->get_service_name());
   }
 
-  // // Enable Streaming
-  // srv_name = srv_prefix + mSrvEnableStreamingName;
-  // mEnableStreamingSrv = create_service<std_srvs::srv::SetBool>(
-  //   srv_name, std::bind(&ZedCamera::callback_enableStreaming, this, _1, _2, _3));
-  // RCLCPP_INFO(get_logger(), " * '%s'", mEnableStreamingSrv->get_service_name());
+  // Enable Streaming
+  srv_name = srv_prefix + mSrvEnableStreamingName;
+  mEnableStreamingSrv = create_service<std_srvs::srv::SetBool>(
+    srv_name, std::bind(&ZedCamera::callback_enableStreaming, this, _1, _2, _3));
+  RCLCPP_INFO(get_logger(), " * '%s'", mEnableStreamingSrv->get_service_name());
 
-  // // Start SVO Recording
-  // srv_name = srv_prefix + mSrvStartSvoRecName;
-  // mStartSvoRecSrv = create_service<zed_msgs::srv::StartSvoRec>(
-  //   srv_name, std::bind(&ZedCamera::callback_startSvoRec, this, _1, _2, _3));
-  // RCLCPP_INFO(get_logger(), " * '%s'", mStartSvoRecSrv->get_service_name());
-  // // Stop SVO Recording
-  // srv_name = srv_prefix + mSrvStopSvoRecName;
-  // mStopSvoRecSrv = create_service<std_srvs::srv::Trigger>(
-  //   srv_name, std::bind(&ZedCamera::callback_stopSvoRec, this, _1, _2, _3));
-  // RCLCPP_INFO(get_logger(), " * '%s'", mStopSvoRecSrv->get_service_name());
+  // Start SVO Recording
+  srv_name = srv_prefix + mSrvStartSvoRecName;
+  mStartSvoRecSrv = create_service<zed_msgs::srv::StartSvoRec>(
+    srv_name, std::bind(&ZedCamera::callback_startSvoRec, this, _1, _2, _3));
+  RCLCPP_INFO(get_logger(), " * '%s'", mStartSvoRecSrv->get_service_name());
+  // Stop SVO Recording
+  srv_name = srv_prefix + mSrvStopSvoRecName;
+  mStopSvoRecSrv = create_service<std_srvs::srv::Trigger>(
+    srv_name, std::bind(&ZedCamera::callback_stopSvoRec, this, _1, _2, _3));
+  RCLCPP_INFO(get_logger(), " * '%s'", mStopSvoRecSrv->get_service_name());
 
-//   // Pause SVO (only if the realtime playing mode is disabled)
-//   if (mSvoMode) {
-// #ifndef USE_SVO_REALTIME_PAUSE
-//     if (!mSvoRealtime) {
-// #endif
-//     srv_name = srv_prefix + mSrvToggleSvoPauseName;
-//     mPauseSvoSrv = create_service<std_srvs::srv::Trigger>(
-//       srv_name,
-//       std::bind(&ZedCamera::callback_pauseSvoInput, this, _1, _2, _3));
-//     RCLCPP_INFO(get_logger(), " * '%s'", mPauseSvoSrv->get_service_name());
-// #ifndef USE_SVO_REALTIME_PAUSE
-//   }
-// #endif
+  // Pause SVO (only if the realtime playing mode is disabled)
+  if (mSvoMode) {
+#ifndef USE_SVO_REALTIME_PAUSE
+    if (!mSvoRealtime) {
+#endif
+    srv_name = srv_prefix + mSrvToggleSvoPauseName;
+    mPauseSvoSrv = create_service<std_srvs::srv::Trigger>(
+      srv_name,
+      std::bind(&ZedCamera::callback_pauseSvoInput, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mPauseSvoSrv->get_service_name());
+#ifndef USE_SVO_REALTIME_PAUSE
+  }
+#endif
 
-    //Set Service for SVO frame
-  //   srv_name = srv_prefix + mSrvSetSvoFrameName;
-  //   mSetSvoFrameSrv = create_service<zed_msgs::srv::SetSvoFrame>(
-  //     srv_name,
-  //     std::bind(&ZedCamera::callback_setSvoFrame, this, _1, _2, _3));
-  //   RCLCPP_INFO(get_logger(), " * '%s'", mSetSvoFrameSrv->get_service_name());
-  // }
+    Set Service for SVO frame
+    srv_name = srv_prefix + mSrvSetSvoFrameName;
+    mSetSvoFrameSrv = create_service<zed_msgs::srv::SetSvoFrame>(
+      srv_name,
+      std::bind(&ZedCamera::callback_setSvoFrame, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mSetSvoFrameSrv->get_service_name());
+  }
 
-  // // Set ROI
-  // srv_name = srv_prefix + mSrvSetRoiName;
-  // mSetRoiSrv = create_service<zed_msgs::srv::SetROI>(
-  //   srv_name, std::bind(&ZedCamera::callback_setRoi, this, _1, _2, _3));
-  // RCLCPP_INFO(get_logger(), " * '%s'", mSetRoiSrv->get_service_name());
-  // // Reset ROI
-  // srv_name = srv_prefix + mSrvResetRoiName;
-  // mResetRoiSrv = create_service<std_srvs::srv::Trigger>(
-  //   srv_name, std::bind(&ZedCamera::callback_resetRoi, this, _1, _2, _3));
-  // RCLCPP_INFO(get_logger(), " * '%s'", mResetRoiSrv->get_service_name());
+  // Set ROI
+  srv_name = srv_prefix + mSrvSetRoiName;
+  mSetRoiSrv = create_service<zed_msgs::srv::SetROI>(
+    srv_name, std::bind(&ZedCamera::callback_setRoi, this, _1, _2, _3));
+  RCLCPP_INFO(get_logger(), " * '%s'", mSetRoiSrv->get_service_name());
+  // Reset ROI
+  srv_name = srv_prefix + mSrvResetRoiName;
+  mResetRoiSrv = create_service<std_srvs::srv::Trigger>(
+    srv_name, std::bind(&ZedCamera::callback_resetRoi, this, _1, _2, _3));
+  RCLCPP_INFO(get_logger(), " * '%s'", mResetRoiSrv->get_service_name());
 
-  // if (mGnssFusionEnabled) {
-  //   // To Latitude/Longitude
-  //   srv_name = srv_prefix + mSrvToLlName;
-  //   mToLlSrv = create_service<robot_localization::srv::ToLL>(
-  //     srv_name, std::bind(&ZedCamera::callback_toLL, this, _1, _2, _3));
-  //   RCLCPP_INFO(get_logger(), " * '%s'", mToLlSrv->get_service_name());
-  //   // From Latitude/Longitude
-  //   srv_name = srv_prefix + mSrvFromLlName;
-  //   mFromLlSrv = create_service<robot_localization::srv::FromLL>(
-  //     srv_name, std::bind(&ZedCamera::callback_fromLL, this, _1, _2, _3));
-  //   RCLCPP_INFO(get_logger(), " * '%s'", mFromLlSrv->get_service_name());
-  // }
+  if (mGnssFusionEnabled) {
+    // To Latitude/Longitude
+    srv_name = srv_prefix + mSrvToLlName;
+    mToLlSrv = create_service<robot_localization::srv::ToLL>(
+      srv_name, std::bind(&ZedCamera::callback_toLL, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mToLlSrv->get_service_name());
+    // From Latitude/Longitude
+    srv_name = srv_prefix + mSrvFromLlName;
+    mFromLlSrv = create_service<robot_localization::srv::FromLL>(
+      srv_name, std::bind(&ZedCamera::callback_fromLL, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mFromLlSrv->get_service_name());
+  }
 }
 
 std::string ZedCamera::getParam(
