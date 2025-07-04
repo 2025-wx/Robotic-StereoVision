@@ -2,7 +2,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "std_msgs/msg/string.hpp"
 #include "zed.hpp"
 
 int main(int argc, char **argv) {

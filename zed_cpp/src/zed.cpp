@@ -6,8 +6,6 @@
 #include <opencv2/opencv.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sl/Camera.hpp>
-#include <string>
-#include <vector>
 
 #include "utils.h"
 #include "zed_interfaces/msg/obj.hpp"
@@ -180,14 +178,13 @@ void ZedNode::zed_timer_callback() {
     float distance = -1.0f;
 
     if (!std::isnan(obj.position.z)) {
-      distance = obj.position.z;
+      distance = -obj.position.z;
       sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
               obj.confidence, distance);
     } else {
       sprintf(text, "%s - %.1f%%", class_name.c_str(), obj.confidence);
     }
 
-    // det_msg.data += std::string(text) + "\n";
     zed_interfaces::msg::Obj trk_data;
     trk_data.label = class_name;
     trk_data.label_id = obj.raw_label;
@@ -217,7 +214,6 @@ void ZedNode::zed_timer_callback() {
     cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
   }
 
-  // cv::resizeWindow("ZED", 1200, 700);
   cv::imshow("ZED", res);
   int const key{cv::waitKey(1)};
   det_pub_->publish(det_msg);
