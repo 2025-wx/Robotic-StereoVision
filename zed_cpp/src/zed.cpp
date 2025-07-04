@@ -57,7 +57,7 @@ void ZedNode::ZedInit() {
   detection_params.enable_segmentation = true;
   detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
-  detection_params.custom_onnx_file.set("yolov8s.onnx");
+  detection_params.custom_onnx_file.set("yolov8.onnx");
   detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
 
   const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
@@ -67,53 +67,6 @@ void ZedNode::ZedInit() {
     rclcpp::shutdown();
   }
 
-  customObjectTracker_rt.object_detection_properties
-      .detection_confidence_threshold = 20.f;
-
-  customObjectTracker_rt.object_class_detection_properties[0U]
-      .detection_confidence_threshold = 60.f;
-  customObjectTracker_rt.object_class_detection_properties[0U]
-      .native_mapped_class = sl::OBJECT_SUBCLASS::PERSON;
-  customObjectTracker_rt.object_class_detection_properties[1U]
-      .min_box_width_normalized = 0.01f;
-  customObjectTracker_rt.object_class_detection_properties[1U]
-      .max_box_width_normalized = 0.5f;
-  customObjectTracker_rt.object_class_detection_properties[1U]
-      .min_box_height_normalized = 0.01f;
-  customObjectTracker_rt.object_class_detection_properties[1U]
-      .max_box_height_normalized = 0.5f;
-  printf(
-      "Custom Object Detection runtime parameters: Label 0, confidence "
-      "threshold set to %2.1f\n",
-      customObjectTracker_rt.object_class_detection_properties[0U]
-          .detection_confidence_threshold);
-  printf(
-      "Custom Object Detection runtime parameters: Label 0, mapped to native "
-      "SUBCLASS %s\n",
-      toString(customObjectTracker_rt.object_class_detection_properties[0U]
-                   .native_mapped_class)
-          .get());
-  printf(
-      "Custom Object Detection runtime parameters: Label 1, min box width set "
-      "to %.2f\n",
-      customObjectTracker_rt.object_class_detection_properties[1U]
-          .min_box_width_normalized);
-  printf(
-      "Custom Object Detection runtime parameters: Label 1, max box width set "
-      "to %.2f\n",
-      customObjectTracker_rt.object_class_detection_properties[1U]
-          .max_box_width_normalized);
-  printf(
-      "Custom Object Detection runtime parameters: Label 1, min box height set "
-      "to %.2f\n",
-      customObjectTracker_rt.object_class_detection_properties[1U]
-          .min_box_height_normalized);
-  printf(
-      "Custom Object Detection runtime parameters: Label 1, max box height set "
-      "to %.2f\n",
-      customObjectTracker_rt.object_class_detection_properties[1U]
-          .max_box_height_normalized);
-
   const sl::CameraConfiguration camera_config =
       zed.getCameraInformation().camera_configuration;
   const sl::Resolution pc_resolution(
@@ -122,8 +75,57 @@ void ZedNode::ZedInit() {
   const sl::CameraConfiguration camera_info =
       zed.getCameraInformation(pc_resolution).camera_configuration;
 
-  cv::namedWindow("ZED retrieved Objects", cv::WINDOW_NORMAL);
-  cv::resizeWindow("ZED retrieved Objects", 1536, 864);
+  customObjectTracker_rt.object_detection_properties
+      .detection_confidence_threshold = 20.f;
+  printf(
+      "Custom Object Detection runtime parameters: confidence threshold set to "
+      "%2.1f for all classes\n",
+      customObjectTracker_rt.object_detection_properties
+          .detection_confidence_threshold);
+
+  customObjectTracker_rt.object_class_detection_properties[0U]
+      .detection_confidence_threshold = 60.f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 0, confidence "
+      "threshold set to %2.1f\n",
+      customObjectTracker_rt.object_class_detection_properties[0U]
+          .detection_confidence_threshold);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .min_box_width_normalized = 0.01f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, min box width set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .min_box_width_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .max_box_width_normalized = 0.5f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, max box width set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .max_box_width_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .min_box_height_normalized = 0.01f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, min box height set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .min_box_height_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .max_box_height_normalized = 0.5f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, max box height set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .max_box_height_normalized);
+
+  cv::namedWindow("ZED", cv::WINDOW_NORMAL);
+  cv::resizeWindow("ZED", 1536, 864);
+  printf("ZED camera opened successfully!\n");
 
   zed_timer_ =
       this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(30.0)),
@@ -206,8 +208,9 @@ void ZedNode::zed_timer_callback() {
     cv::putText(res, text, cv::Point(x, y + label_size.height),
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
   }
+
   cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
-  cv::imshow("ZED retrieved Objects", left_cv);
+  cv::imshow("ZED", left_cv);
   det_pub_->publish(det_msg);
 }
 }  // namespace vision
