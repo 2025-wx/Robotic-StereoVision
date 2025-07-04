@@ -146,7 +146,7 @@ void ZedNode::zed_timer_callback() {
   res = left_cv.clone();
   cv::Mat mask{left_cv.clone()};
 
-  for (const auto &obj : objs.object_list) {
+  for (sl::ObjectData const& obj : objs.object_list) {
     if (!renderObject(obj, true))
       continue;
 
@@ -160,7 +160,7 @@ void ZedNode::zed_timer_callback() {
         static_cast<int>(obj.bounding_box_2d[1U].x - obj.bounding_box_2d[0U].x),
         static_cast<int>(obj.bounding_box_2d[2U].y -
                          obj.bounding_box_2d[0U].y)};
-    cv::rectangle(left_cv, rect, color, 2);
+    cv::rectangle(res, rect, color, 2);
 
     char text[256U];
     class_name = "Unknown";
@@ -207,9 +207,10 @@ void ZedNode::zed_timer_callback() {
         {255, 255, 0}, -1);
     cv::putText(res, text, cv::Point(x, y + label_size.height),
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
+    cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
   }
 
-  cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
+  cv::resizeWindow("ZED", 1200, 700);
   cv::imshow("ZED", left_cv);
   det_pub_->publish(det_msg);
 }
