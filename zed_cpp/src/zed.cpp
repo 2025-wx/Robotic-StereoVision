@@ -139,6 +139,11 @@ void ZedNode::zed_timer_callback() {
   zed.retrieveImage(left_sl, sl::VIEW::LEFT);
   left_cv = slMat2cvMat(left_sl);
 
+  if (left_cv.empty()) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to retrieve image from ZED!");
+    return;
+  }
+
   zed.retrieveCustomObjects(objs, customObjectTracker_rt);
 
   auto det_msg = zed_interfaces::msg::Trk();
@@ -146,10 +151,9 @@ void ZedNode::zed_timer_callback() {
   res = left_cv.clone();
   cv::Mat mask{left_cv.clone()};
 
-  for (sl::ObjectData const& obj : objs.object_list) {
-    if (!renderObject(obj, true))
+  for (sl::ObjectData const &obj : objs.object_list) {
+    if (!renderObject(obj, this->enable_tracking))
       continue;
-
     size_t const idx_color{obj.id % colors.size()};
     cv::Scalar const color{cv::Scalar(
         colors[idx_color][0U], colors[idx_color][1U], colors[idx_color][2U])};
@@ -211,7 +215,8 @@ void ZedNode::zed_timer_callback() {
   }
 
   cv::resizeWindow("ZED", 1200, 700);
-  cv::imshow("ZED", left_cv);
+  cv::imshow("ZED", res);
+  int const key{cv::waitKey(1)};
   det_pub_->publish(det_msg);
 }
 }  // namespace vision
