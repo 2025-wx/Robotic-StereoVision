@@ -57,8 +57,10 @@ void ZedNode::ZedInit() {
   this->detection_params.enable_segmentation = true;
   this->detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
-  this->detection_params.custom_onnx_file.set("/home/nxsuper/rs_ws/src/yolov8.onnx");
-  this->detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
+  this->detection_params.custom_onnx_file.set(
+      "/home/nxsuper/rs_ws/src/yolov8.onnx");
+  this->detection_params.custom_onnx_dynamic_input_shape =
+      sl::Resolution(320, 320);
 
   const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
   if (od_ret != sl::ERROR_CODE::SUCCESS) {
@@ -147,16 +149,17 @@ void ZedNode::zed_timer_callback() {
 
   auto det_msg = zed_interfaces::msg::Trk();
 
-  sl::Mat& res = left_cv.clone();
+  cv::Mat res = left_cv.clone();
   cv::Mat mask{left_cv.clone()};
   constexpr bool enable_track = true;
 
   for (sl::ObjectData const &obj : objs.object_list) {
     if (!renderObject(obj, enable_track))
       continue;
-    size_t const idx_color{obj.id % colors.size()};
-    cv::Scalar const color{cv::Scalar(
-        colors[idx_color][0U], colors[idx_color][1U], colors[idx_color][2U])};
+    size_t const idx_color{obj.id % CLASS_COLORS.size()};
+    cv::Scalar const color{cv::Scalar(CLASS_COLORS[idx_color][0U],
+                                      CLASS_COLORS[idx_color][1U],
+                                      CLASS_COLORS[idx_color][2U])};
 
     cv::Rect const rect{
         static_cast<int>(obj.bounding_box_2d[0U].x),
