@@ -50,7 +50,7 @@ void ZedNode::ZedInit() {
     rclcpp::shutdown();
   }
 
-  this->zed.enablePositionalTracking();
+  zed.enablePositionalTracking();
 
   constexpr bool enable_tracking = true;
   this->detection_params.enable_tracking = enable_tracking;
@@ -60,7 +60,7 @@ void ZedNode::ZedInit() {
   this->detection_params.custom_onnx_file.set("/home/nxsuper/rs_ws/src/yolov8.onnx");
   this->detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
 
-  const sl::ERROR_CODE od_ret = this->zed.enableObjectDetection(detection_params);
+  const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
   if (od_ret != sl::ERROR_CODE::SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to enable object detection!");
     this->zed.close();
@@ -68,7 +68,7 @@ void ZedNode::ZedInit() {
   }
 
   const sl::CameraConfiguration camera_config =
-      this->zed.getCameraInformation().camera_configuration;
+      zed.getCameraInformation().camera_configuration;
   const sl::Resolution pc_resolution(
       std::min((int)camera_config.resolution.width, 720),
       std::min((int)camera_config.resolution.height, 404));
@@ -132,26 +132,26 @@ void ZedNode::ZedInit() {
 }
 
 void ZedNode::zed_timer_callback() {
-  if (this->zed.grab() != sl::ERROR_CODE::SUCCESS)
+  if (zed.grab() != sl::ERROR_CODE::SUCCESS)
     return;
 
-  this->zed.retrieveImage(this->left_sl, sl::VIEW::LEFT);
-  this->left_cv = slMat2cvMat(this->left_sl);
+  zed.retrieveImage(left_sl, sl::VIEW::LEFT);
+  left_cv = slMat2cvMat(left_sl);
 
-  if (this->left_cv.empty()) {
+  if (left_cv.empty()) {
     RCLCPP_ERROR(this->get_logger(), "Failed to retrieve image from ZED!");
     return;
   }
 
-  this->zed.retrieveCustomObjects(this->objs, this->customObjectTracker_rt);
+  zed.retrieveCustomObjects(objs, customObjectTracker_rt);
 
   auto det_msg = zed_interfaces::msg::Trk();
 
-  this->res = this->left_cv.clone();
-  cv::Mat mask{this->left_cv.clone()};
+  sl::Mat& res = left_cv.clone();
+  cv::Mat mask{left_cv.clone()};
   constexpr bool enable_track = true;
 
-  for (sl::ObjectData const &obj : this->objs.object_list) {
+  for (sl::ObjectData const &obj : objs.object_list) {
     if (!renderObject(obj, enable_track))
       continue;
     size_t const idx_color{obj.id % colors.size()};
@@ -164,14 +164,14 @@ void ZedNode::zed_timer_callback() {
         static_cast<int>(obj.bounding_box_2d[1U].x - obj.bounding_box_2d[0U].x),
         static_cast<int>(obj.bounding_box_2d[2U].y -
                          obj.bounding_box_2d[0U].y)};
-    cv::rectangle(this->res, rect, color, 2);
+    cv::rectangle(res, rect, color, 2);
 
     char text[256U];
-    this->class_name = "Unknown";
+    class_name = "Unknown";
 
     if (obj.raw_label >= 0 &&
         obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
-      this->class_name = RSV_CLASSES[obj.raw_label];
+      class_name = RSV_CLASSES[obj.raw_label];
     }
 
     float distance = -1.0f;
@@ -186,7 +186,7 @@ void ZedNode::zed_timer_callback() {
 
     // det_msg.data += std::string(text) + "\n";
     zed_interfaces::msg::Obj trk_data;
-    trk_data.label = this->class_name;
+    trk_data.label = class_name;
     trk_data.label_id = obj.raw_label;
     trk_data.confidence = obj.confidence;
     trk_data.position[0] = obj.position.x;
@@ -207,15 +207,15 @@ void ZedNode::zed_timer_callback() {
     const int x{rect.x};
     const int y{std::min(rect.y + 1, res.rows)};
     cv::rectangle(
-        this->res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
+        res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
         {255, 255, 0}, -1);
-    cv::putText(this->res, text, cv::Point(x, y + label_size.height),
+    cv::putText(res, text, cv::Point(x, y + label_size.height),
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
-    cv::addWeighted(this->res, 1.0, mask, 0.4, 0.0, res);
+    cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
   }
 
-  cv::resizeWindow("ZED", 1200, 700);
-  cv::imshow("ZED", this->res);
+  // cv::resizeWindow("ZED", 1200, 700);
+  cv::imshow("ZED", res);
   int const key{cv::waitKey(1)};
   det_pub_->publish(det_msg);
 }

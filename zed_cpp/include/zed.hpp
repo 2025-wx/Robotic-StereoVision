@@ -30,16 +30,15 @@ class ZedNode : public rclcpp::Node {
 
   rclcpp::TimerBase::SharedPtr zed_timer_;
   rclcpp::Publisher<zed_interfaces::msg::Trk>::SharedPtr det_pub_;
-  sl::Objects objs;
-  std::vector<std::vector<int>> colors;
+  const sl::Objects objs;
+  const std::vector<std::vector<int>> colors;
   std::string class_name;
   // std_msgs::msg::String det_msg;
 
   sl::Camera zed;
 
-  sl::Mat left_sl;
+  const sl::Mat left_sl;
   cv::Mat left_cv;
-  cv::Mat res;
   sl::InitParameters init_parameters;
   sl::ObjectDetectionParameters detection_params;
   sl::CustomObjectDetectionRuntimeParameters customObjectTracker_rt;
