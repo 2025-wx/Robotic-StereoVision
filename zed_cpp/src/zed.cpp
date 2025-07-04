@@ -57,7 +57,7 @@ void ZedNode::ZedInit() {
   detection_params.enable_segmentation = true;
   detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
-  detection_params.custom_onnx_file.set("yolov8.onnx");
+  detection_params.custom_onnx_file.set("/home/nxsuper/rs_ws/src/yolov8.onnx");
   detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
 
   const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
