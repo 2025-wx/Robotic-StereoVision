@@ -150,9 +150,10 @@ void ZedNode::zed_timer_callback() {
 
   res = left_cv.clone();
   cv::Mat mask{left_cv.clone()};
+  constexpr bool enable_track = true;
 
   for (sl::ObjectData const &obj : objs.object_list) {
-    if (!renderObject(obj, this->enable_tracking))
+    if (!renderObject(obj, enable_track))
       continue;
     size_t const idx_color{obj.id % colors.size()};
     cv::Scalar const color{cv::Scalar(

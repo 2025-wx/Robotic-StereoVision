@@ -43,8 +43,6 @@ class ZedNode : public rclcpp::Node {
   sl::InitParameters init_parameters;
   sl::ObjectDetectionParameters detection_params;
   sl::CustomObjectDetectionRuntimeParameters customObjectTracker_rt;
-
-  constexpr bool enable_tracking = true;
 };
 }  // namespace vision
 }  // namespace RoboticStereoVision
