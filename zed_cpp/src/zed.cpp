@@ -32,7 +32,10 @@ ZedNode::ZedNode(const std::string &name) : Node(name) {
 ZedNode::~ZedNode() {
   if (zed_timer_ != nullptr) {
     zed_timer_.reset();
+
+#ifdef SHOW_WINDOW
     cv::destroyAllWindows();
+#endif
   }
 }
 
@@ -40,7 +43,7 @@ void ZedNode::ZedInit() {
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::NEURAL;
   init_parameters.coordinate_units = sl::UNIT::METER;
-  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
+  // init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
 
   const sl::ERROR_CODE open_ret = zed.open(init_parameters);
   if (open_ret != sl::ERROR_CODE::SUCCESS) {
@@ -51,19 +54,17 @@ void ZedNode::ZedInit() {
   zed.enablePositionalTracking();
 
   constexpr bool enable_tracking = true;
-  this->detection_params.enable_tracking = enable_tracking;
-  this->detection_params.enable_segmentation = true;
-  this->detection_params.detection_model =
+  detection_params.enable_tracking = enable_tracking;
+  detection_params.enable_segmentation = true;
+  detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
-  this->detection_params.custom_onnx_file.set(
-      "/home/nxsuper/rs_ws/src/yolov8.onnx");
-  this->detection_params.custom_onnx_dynamic_input_shape =
-      sl::Resolution(320, 320);
+  detection_params.custom_onnx_file.set("/home/nxsuper/rs_ws/src/yolov8.onnx");
+  detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
 
   const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
   if (od_ret != sl::ERROR_CODE::SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to enable object detection!");
-    this->zed.close();
+    zed.close();
     rclcpp::shutdown();
   }
 
@@ -73,7 +74,7 @@ void ZedNode::ZedInit() {
       std::min((int)camera_config.resolution.width, 720),
       std::min((int)camera_config.resolution.height, 404));
   const sl::CameraConfiguration camera_info =
-      this->zed.getCameraInformation(pc_resolution).camera_configuration;
+      zed.getCameraInformation(pc_resolution).camera_configuration;
 
   customObjectTracker_rt.object_detection_properties
       .detection_confidence_threshold = 20.f;
@@ -123,11 +124,13 @@ void ZedNode::ZedInit() {
       customObjectTracker_rt.object_class_detection_properties[1U]
           .max_box_height_normalized);
 
+#ifdef SHOW_WINDOW
   cv::namedWindow("ZED", cv::WINDOW_NORMAL);
   cv::resizeWindow("ZED", 1536, 864);
+#endif
 
   zed_timer_ =
-      this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(30.0)),
+      this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(40.0)),
                               std::bind(&ZedNode::zed_timer_callback, this));
 }
 
@@ -147,13 +150,18 @@ void ZedNode::zed_timer_callback() {
 
   auto det_msg = zed_interfaces::msg::Trk();
 
+#ifdef SHOW_WINDOW
   cv::Mat res = left_cv.clone();
   cv::Mat mask{left_cv.clone()};
+#endif
+
   constexpr bool enable_track = true;
 
   for (sl::ObjectData const &obj : objs.object_list) {
     if (!renderObject(obj, enable_track))
       continue;
+
+#ifdef SHOW_WINDOW
     size_t const idx_color{obj.id % CLASS_COLORS.size()};
     cv::Scalar const color{cv::Scalar(CLASS_COLORS[idx_color][0U],
                                       CLASS_COLORS[idx_color][1U],
@@ -166,6 +174,7 @@ void ZedNode::zed_timer_callback() {
         static_cast<int>(obj.bounding_box_2d[2U].y -
                          obj.bounding_box_2d[0U].y)};
     cv::rectangle(res, rect, color, 2);
+#endif
 
     char text[256U];
     class_name = "Unknown";
@@ -179,10 +188,13 @@ void ZedNode::zed_timer_callback() {
 
     if (!std::isnan(obj.position.z)) {
       distance = -obj.position.z;
+
+#ifdef SHOW_WINDOW
       sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
               obj.confidence, distance);
     } else {
       sprintf(text, "%s - %.1f%%", class_name.c_str(), obj.confidence);
+#endif
     }
 
     zed_interfaces::msg::Obj trk_data;
@@ -195,6 +207,7 @@ void ZedNode::zed_timer_callback() {
 
     det_msg.objects.push_back(trk_data);
 
+#ifdef SHOW_WINDOW
     if (obj.mask.isInit() && obj.mask.getWidth() > 0U &&
         obj.mask.getHeight() > 0U) {
       const cv::Mat obj_mask = slMat2cvMat(obj.mask);
@@ -211,11 +224,15 @@ void ZedNode::zed_timer_callback() {
         {255, 255, 0}, -1);
     cv::putText(res, text, cv::Point(x, y + label_size.height),
                 cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
-    cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
+#endif
   }
 
+#ifdef SHOW_WINDOW
+  cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
   cv::imshow("ZED", res);
   int const key{cv::waitKey(1)};
+#endif
+
   det_pub_->publish(det_msg);
 }
 }  // namespace vision

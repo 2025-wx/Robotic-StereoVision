@@ -26,17 +26,15 @@ class ZedNode : public rclcpp::Node {
 
   void zed_timer_callback();
 
-  rclcpp::TimerBase::SharedPtr zed_timer_;
-  rclcpp::Publisher<zed_interfaces::msg::Trk>::SharedPtr det_pub_;
-  sl::Objects objs;
-  std::string class_name;
-
   sl::Camera zed;
-
   sl::Mat left_sl;
   cv::Mat left_cv;
+  sl::Objects objs;
+  std::string class_name;
   sl::InitParameters init_parameters;
+  rclcpp::TimerBase::SharedPtr zed_timer_;
   sl::ObjectDetectionParameters detection_params;
+  rclcpp::Publisher<zed_interfaces::msg::Trk>::SharedPtr det_pub_;
   sl::CustomObjectDetectionRuntimeParameters customObjectTracker_rt;
 };
 }  // namespace vision

@@ -41,6 +41,13 @@ set(ZED_LIBS
 add_executable(zed_pub src/main.cpp src/zed.cpp)
 ament_target_dependencies(zed_pub rclcpp std_msgs OpenCV zed_interfaces)
 
+# Optional: Add the macro to enable window display
+option(SHOW_WINDOW "Enable OpenCV display window" ON)
+
+if(SHOW_WINDOW)
+  target_compile_definitions(zed_pub PRIVATE SHOW_WINDOW)
+endif()
+
 target_include_directories(zed_pub PUBLIC
   ${CUDA_INCLUDE_DIRS}
   ${ZED_INCLUDE_DIRS}
