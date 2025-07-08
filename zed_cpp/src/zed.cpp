@@ -43,7 +43,7 @@ void ZedNode::ZedInit() {
   init_parameters.sdk_verbose = true;
   init_parameters.depth_mode = sl::DEPTH_MODE::NEURAL;
   init_parameters.coordinate_units = sl::UNIT::METER;
-  // init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
+  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
 
   const sl::ERROR_CODE open_ret = zed.open(init_parameters);
   if (open_ret != sl::ERROR_CODE::SUCCESS) {
