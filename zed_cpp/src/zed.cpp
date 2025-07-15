@@ -2,10 +2,14 @@
 
 #include "zed.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <mutex>
 #include <opencv2/opencv.hpp>
+#include <queue>
 #include <rclcpp/rclcpp.hpp>
 #include <sl/Camera.hpp>
+#include <thread>
 
 #include "utils.h"
 #include "zed_interfaces/msg/obj.hpp"
@@ -21,7 +25,7 @@ constexpr const char *kZedPublisher = "zed_publisher_name";
 constexpr const char *kZedDefaultPublisher = "/zed/detections";
 constexpr const char *kOnnxPath = "onnx_path";
 constexpr const char *kZedDefaultOnnxPath =
-    "/home/nxsuper/rs_ws/src/yolov8.onnx";
+    "/home/nxsuper/rs_ws/src/model_yolov8/yolov8.onnx";
 }  // namespace
 
 ZedNode::ZedNode(const std::string &name) : Node(name) {
@@ -33,18 +37,28 @@ ZedNode::ZedNode(const std::string &name) : Node(name) {
   this->declare_parameter(kOnnxPath, std::string(kZedDefaultOnnxPath));
   this->get_parameter_or(kOnnxPath, onnx_path_,
                          std::string(kZedDefaultOnnxPath));
+
   det_pub_ =
       this->create_publisher<zed_interfaces::msg::Trk>(zed_publisher_name, 10);
+
   ZedInit();
+
+  camera_thread_ = std::thread(&ZedNode::CameraThreadFunc, this);
+  inference_thread_ = std::thread(&ZedNode::InferenceThreadFunc, this);
 }
 
 ZedNode::~ZedNode() {
-  if (zed_timer_ != nullptr) {
-    zed_timer_.reset();
-    if (show_window_) {
-      cv::destroyAllWindows();
-    }
+  running_ = false;
+  if (camera_thread_.joinable()) {
+    camera_thread_.join();
   }
+  if (inference_thread_.joinable()) {
+    inference_thread_.join();
+  }
+  if (show_window_) {
+    cv::destroyAllWindows();
+  }
+  zed.close();
 }
 
 void ZedNode::ZedInit() {
@@ -61,8 +75,7 @@ void ZedNode::ZedInit() {
 
   zed.enablePositionalTracking();
 
-  constexpr bool enable_tracking = true;
-  detection_params.enable_tracking = enable_tracking;
+  detection_params.enable_tracking = true;
   detection_params.enable_segmentation = true;
   detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
@@ -76,14 +89,6 @@ void ZedNode::ZedInit() {
     rclcpp::shutdown();
     return;
   }
-
-  const sl::CameraConfiguration camera_config =
-      zed.getCameraInformation().camera_configuration;
-  const sl::Resolution pc_resolution(
-      std::min((int)camera_config.resolution.width, 720),
-      std::min((int)camera_config.resolution.height, 404));
-  const sl::CameraConfiguration camera_info =
-      zed.getCameraInformation(pc_resolution).camera_configuration;
 
   customObjectTracker_rt.object_detection_properties
       .detection_confidence_threshold = 20.f;
@@ -142,126 +147,141 @@ void ZedNode::ZedInit() {
     cv::namedWindow("ZED", cv::WINDOW_NORMAL);
     cv::resizeWindow("ZED", 1536, 864);
   }
-
-  zed_timer_ =
-      this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(40.0)),
-                              std::bind(&ZedNode::zed_timer_callback, this));
 }
 
-void ZedNode::zed_timer_callback() {
-  if (zed.grab() != sl::ERROR_CODE::SUCCESS) {
-    grab_failure_count_++;
-    RCLCPP_WARN(this->get_logger(), "ZED grab failed (%d times)",
-                grab_failure_count_);
-    if (grab_failure_count_ >= 30) {
-      RCLCPP_ERROR(
-          this->get_logger(),
-          "ZED grab failed too many times. Attempting reinitialization.");
-      zed.close();
-      ZedInit();
+void ZedNode::CameraThreadFunc() {
+  while (running_) {
+    if (zed.grab() == sl::ERROR_CODE::SUCCESS) {
+      sl::Mat left_sl;
+      zed.retrieveImage(left_sl, sl::VIEW::LEFT);
+      cv::Mat frame = slMat2cvMat(left_sl);
+
+      if (!frame.empty()) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        if (frame_queue_.size() < 5) {
+          frame_queue_.push(frame.clone());
+        }
+      }
+    } else {
+      grab_failure_count_++;
+      RCLCPP_WARN(this->get_logger(), "ZED grab failed (%d times)",
+                  grab_failure_count_);
+      if (grab_failure_count_ >= 30) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "ZED grab failed too many times. Reinitializing.");
+        zed.close();
+        ZedInit();
+        grab_failure_count_ = 0;
+      }
     }
-    return;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+}
 
-  grab_failure_count_ = 0;
+void ZedNode::InferenceThreadFunc() {
+  using clock = std::chrono::steady_clock;
+  const std::chrono::milliseconds frame_duration(40);
+  auto last_time = clock::now();
 
-  zed.retrieveImage(left_sl, sl::VIEW::LEFT);
-  left_cv = slMat2cvMat(left_sl);
-
-  if (left_cv.empty()) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to retrieve image from ZED!");
-    return;
-  }
-
-  zed.retrieveCustomObjects(objs, customObjectTracker_rt);
-
-  auto det_msg = zed_interfaces::msg::Trk();
-
-  cv::Mat res, mask;
-  if (show_window_) {
-    res = left_cv.clone();
-    mask = left_cv.clone();
-  }
-
-  constexpr bool enable_track = true;
-
-  cv::Scalar color;
-  cv::Rect rect;
-
-  for (sl::ObjectData const &obj : objs.object_list) {
-    if (!renderObject(obj, enable_track))
+  while (running_) {
+    auto now = clock::now();
+    auto elapsed =
+        std::chrono::duration_cast<std::chrono::milliseconds>(now - last_time);
+    if (elapsed < frame_duration) {
+      std::this_thread::sleep_for(frame_duration - elapsed);
       continue;
-
-    if (show_window_) {
-      size_t const idx_color{obj.id % CLASS_COLORS.size()};
-      color =
-          cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
-                     CLASS_COLORS[idx_color][2U]);
-
-      rect = cv::Rect{static_cast<int>(obj.bounding_box_2d[0U].x),
-                      static_cast<int>(obj.bounding_box_2d[0U].y),
-                      static_cast<int>(obj.bounding_box_2d[1U].x -
-                                       obj.bounding_box_2d[0U].x),
-                      static_cast<int>(obj.bounding_box_2d[2U].y -
-                                       obj.bounding_box_2d[0U].y)};
-      cv::rectangle(res, rect, color, 2);
     }
+    last_time = clock::now();
 
-    char text[256U];
-    class_name = "Unknown";
-
-    if (obj.raw_label >= 0 &&
-        obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
-      class_name = RSV_CLASSES[obj.raw_label];
-    }
-
-    float distance = -1.0f;
-
-    if (!std::isnan(obj.position.z)) {
-      distance = -obj.position.z;
-      if (show_window_) {
-        sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
-                obj.confidence, distance);
+    cv::Mat frame;
+    {
+      std::lock_guard<std::mutex> lock(mtx_);
+      if (!frame_queue_.empty()) {
+        frame = frame_queue_.front();
+        frame_queue_.pop();
       }
     }
 
-    zed_interfaces::msg::Obj trk_data;
-    trk_data.label = class_name;
-    trk_data.label_id = obj.raw_label;
-    trk_data.confidence = obj.confidence;
-    trk_data.position[0] = obj.position.x;
-    trk_data.position[1] = obj.position.y;
-    trk_data.position[2] = obj.position.z;
+    if (frame.empty()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      continue;
+    }
 
-    det_msg.objects.push_back(trk_data);
+    left_cv = frame;
+    zed.retrieveCustomObjects(objs, customObjectTracker_rt);
 
+    auto det_msg = zed_interfaces::msg::Trk();
+    cv::Mat res, mask;
     if (show_window_) {
-      if (obj.mask.isInit() && obj.mask.getWidth() > 0U &&
-          obj.mask.getHeight() > 0U) {
+      res = left_cv.clone();
+      mask = left_cv.clone();
+    }
+
+    for (const sl::ObjectData &obj : objs.object_list) {
+      if (!renderObject(obj, true))
+        continue;
+
+      cv::Rect rect;
+      cv::Scalar color;
+
+      if (show_window_) {
+        size_t idx_color = obj.id % CLASS_COLORS.size();
+        color =
+            cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
+                       CLASS_COLORS[idx_color][2U]);
+        rect = cv::Rect(static_cast<int>(obj.bounding_box_2d[0U].x),
+                        static_cast<int>(obj.bounding_box_2d[0U].y),
+                        static_cast<int>(obj.bounding_box_2d[1U].x -
+                                         obj.bounding_box_2d[0U].x),
+                        static_cast<int>(obj.bounding_box_2d[2U].y -
+                                         obj.bounding_box_2d[0U].y));
+        cv::rectangle(res, rect, color, 2);
+      }
+
+      zed_interfaces::msg::Obj trk_data;
+      trk_data.label_id = obj.raw_label;
+      trk_data.label =
+          (obj.raw_label >= 0 && obj.raw_label < RSV_CLASSES.size())
+              ? RSV_CLASSES[obj.raw_label]
+              : "Unknown";
+      trk_data.confidence = obj.confidence;
+      trk_data.position[0] = obj.position.x;
+      trk_data.position[1] = obj.position.y;
+      trk_data.position[2] = obj.position.z;
+      det_msg.objects.push_back(trk_data);
+
+      if (show_window_ && obj.mask.isInit()) {
         const cv::Mat obj_mask = slMat2cvMat(obj.mask);
         mask(rect).setTo(color, obj_mask);
+
+        char text[256U];
+        float distance =
+            (!std::isnan(obj.position.z)) ? -obj.position.z : -1.0f;
+        sprintf(text, "%s - %.1f%% - Dist: %.2fm", trk_data.label.c_str(),
+                trk_data.confidence, distance);
+
+        int baseLine;
+        auto label_size =
+            cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine);
+        int x = rect.x;
+        int y = std::min(rect.y + 1, res.rows);
+        cv::rectangle(
+            res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
+            {255, 255, 0}, -1);
+        cv::putText(res, text, cv::Point(x, y + label_size.height),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 2);
       }
-
-      int baseLine{0};
-      const cv::Size label_size{
-          cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
-      const int x{rect.x};
-      const int y{std::min(rect.y + 1, res.rows)};
-      cv::rectangle(
-          res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
-          {255, 255, 0}, -1);
-      cv::putText(res, text, cv::Point(x, y + label_size.height),
-                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
     }
-  }
 
-  if (show_window_) {
-    cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
-    cv::imshow("ZED", res);
-    cv::waitKey(1);
-  }
+    if (show_window_) {
+      cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
+      cv::imshow("ZED", res);
+      cv::waitKey(1);
+    }
 
-  det_pub_->publish(det_msg);
+    det_pub_->publish(det_msg);
+  }
 }
+
 }  // namespace vision
 }  // namespace RoboticStereoVision

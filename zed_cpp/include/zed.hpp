@@ -24,12 +24,20 @@ class ZedNode : public rclcpp::Node {
  private:
   void ZedInit();
 
-  void zed_timer_callback();
+  void CameraThreadFunc();
+  void InferenceThreadFunc();
+
+  std::thread camera_thread_;
+  std::thread inference_thread_;
+  std::mutex mtx_;
+  std::queue<cv::Mat> frame_queue_;
 
   bool show_window_;
   int grab_failure_count_ = 0;
   std::string zed_publisher_name;
   std::string onnx_path_;
+
+  std::atomic<bool> running_{true};
 
   sl::Camera zed;
   sl::Mat left_sl;
@@ -37,7 +45,7 @@ class ZedNode : public rclcpp::Node {
   sl::Objects objs;
   std::string class_name;
   sl::InitParameters init_parameters;
-  rclcpp::TimerBase::SharedPtr zed_timer_;
+  // rclcpp::TimerBase::SharedPtr zed_timer_;
   sl::ObjectDetectionParameters detection_params;
   rclcpp::Publisher<zed_interfaces::msg::Trk>::SharedPtr det_pub_;
   sl::CustomObjectDetectionRuntimeParameters customObjectTracker_rt;
