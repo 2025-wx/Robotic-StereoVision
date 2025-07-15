@@ -15,15 +15,24 @@ namespace RoboticStereoVision {
 namespace vision {
 
 namespace {
+constexpr const char *kShowWindow = "show_window";
+constexpr bool kZedDefaultShowWindow = true;
 constexpr const char *kZedPublisher = "zed_publisher_name";
 constexpr const char *kZedDefaultPublisher = "/zed/detections";
+constexpr const char *kOnnxPath = "onnx_path";
+constexpr const char *kZedDefaultOnnxPath =
+    "/home/nxsuper/rs_ws/src/yolov8.onnx";
 }  // namespace
 
 ZedNode::ZedNode(const std::string &name) : Node(name) {
-  std::string zed_publisher_name;
+  this->declare_parameter(kShowWindow, kZedDefaultShowWindow);
+  this->get_parameter_or(kShowWindow, show_window_, kZedDefaultShowWindow);
+  this->declare_parameter(kZedPublisher, std::string(kZedDefaultPublisher));
   this->get_parameter_or(kZedPublisher, zed_publisher_name,
                          std::string(kZedDefaultPublisher));
-
+  this->declare_parameter(kOnnxPath, std::string(kZedDefaultOnnxPath));
+  this->get_parameter_or(kOnnxPath, onnx_path_,
+                         std::string(kZedDefaultOnnxPath));
   det_pub_ =
       this->create_publisher<zed_interfaces::msg::Trk>(zed_publisher_name, 10);
   ZedInit();
@@ -32,10 +41,9 @@ ZedNode::ZedNode(const std::string &name) : Node(name) {
 ZedNode::~ZedNode() {
   if (zed_timer_ != nullptr) {
     zed_timer_.reset();
-
-#ifdef SHOW_WINDOW
-    cv::destroyAllWindows();
-#endif
+    if (show_window_) {
+      cv::destroyAllWindows();
+    }
   }
 }
 
@@ -58,7 +66,7 @@ void ZedNode::ZedInit() {
   detection_params.enable_segmentation = true;
   detection_params.detection_model =
       sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
-  detection_params.custom_onnx_file.set("/home/nxsuper/rs_ws/src/yolov8.onnx");
+  detection_params.custom_onnx_file.set(onnx_path_.c_str());
   detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
 
   const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
@@ -66,6 +74,7 @@ void ZedNode::ZedInit() {
     RCLCPP_ERROR(this->get_logger(), "Failed to enable object detection!");
     zed.close();
     rclcpp::shutdown();
+    return;
   }
 
   const sl::CameraConfiguration camera_config =
@@ -79,7 +88,8 @@ void ZedNode::ZedInit() {
   customObjectTracker_rt.object_detection_properties
       .detection_confidence_threshold = 20.f;
   printf(
-      "Custom Object Detection runtime parameters: confidence threshold set to "
+      "Custom Object Detection runtime parameters: confidence threshold set "
+      "to "
       "%2.1f for all classes\n",
       customObjectTracker_rt.object_detection_properties
           .detection_confidence_threshold);
@@ -95,7 +105,8 @@ void ZedNode::ZedInit() {
   customObjectTracker_rt.object_class_detection_properties[1U]
       .min_box_width_normalized = 0.01f;
   printf(
-      "Custom Object Detection runtime parameters: Label 1, min box width set "
+      "Custom Object Detection runtime parameters: Label 1, min box width "
+      "set "
       "to %.2f\n",
       customObjectTracker_rt.object_class_detection_properties[1U]
           .min_box_width_normalized);
@@ -103,7 +114,8 @@ void ZedNode::ZedInit() {
   customObjectTracker_rt.object_class_detection_properties[1U]
       .max_box_width_normalized = 0.5f;
   printf(
-      "Custom Object Detection runtime parameters: Label 1, max box width set "
+      "Custom Object Detection runtime parameters: Label 1, max box width "
+      "set "
       "to %.2f\n",
       customObjectTracker_rt.object_class_detection_properties[1U]
           .max_box_width_normalized);
@@ -111,7 +123,8 @@ void ZedNode::ZedInit() {
   customObjectTracker_rt.object_class_detection_properties[1U]
       .min_box_height_normalized = 0.01f;
   printf(
-      "Custom Object Detection runtime parameters: Label 1, min box height set "
+      "Custom Object Detection runtime parameters: Label 1, min box height "
+      "set "
       "to %.2f\n",
       customObjectTracker_rt.object_class_detection_properties[1U]
           .min_box_height_normalized);
@@ -119,15 +132,16 @@ void ZedNode::ZedInit() {
   customObjectTracker_rt.object_class_detection_properties[1U]
       .max_box_height_normalized = 0.5f;
   printf(
-      "Custom Object Detection runtime parameters: Label 1, max box height set "
+      "Custom Object Detection runtime parameters: Label 1, max box height "
+      "set "
       "to %.2f\n",
       customObjectTracker_rt.object_class_detection_properties[1U]
           .max_box_height_normalized);
 
-#ifdef SHOW_WINDOW
-  cv::namedWindow("ZED", cv::WINDOW_NORMAL);
-  cv::resizeWindow("ZED", 1536, 864);
-#endif
+  if (show_window_) {
+    cv::namedWindow("ZED", cv::WINDOW_NORMAL);
+    cv::resizeWindow("ZED", 1536, 864);
+  }
 
   zed_timer_ =
       this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(40.0)),
@@ -135,8 +149,21 @@ void ZedNode::ZedInit() {
 }
 
 void ZedNode::zed_timer_callback() {
-  if (zed.grab() != sl::ERROR_CODE::SUCCESS)
+  if (zed.grab() != sl::ERROR_CODE::SUCCESS) {
+    grab_failure_count_++;
+    RCLCPP_WARN(this->get_logger(), "ZED grab failed (%d times)",
+                grab_failure_count_);
+    if (grab_failure_count_ >= 30) {
+      RCLCPP_ERROR(
+          this->get_logger(),
+          "ZED grab failed too many times. Attempting reinitialization.");
+      zed.close();
+      ZedInit();
+    }
     return;
+  }
+
+  grab_failure_count_ = 0;
 
   zed.retrieveImage(left_sl, sl::VIEW::LEFT);
   left_cv = slMat2cvMat(left_sl);
@@ -150,31 +177,35 @@ void ZedNode::zed_timer_callback() {
 
   auto det_msg = zed_interfaces::msg::Trk();
 
-#ifdef SHOW_WINDOW
-  cv::Mat res = left_cv.clone();
-  cv::Mat mask{left_cv.clone()};
-#endif
+  cv::Mat res, mask;
+  if (show_window_) {
+    res = left_cv.clone();
+    mask = left_cv.clone();
+  }
 
   constexpr bool enable_track = true;
+
+  cv::Scalar color;
+  cv::Rect rect;
 
   for (sl::ObjectData const &obj : objs.object_list) {
     if (!renderObject(obj, enable_track))
       continue;
 
-#ifdef SHOW_WINDOW
-    size_t const idx_color{obj.id % CLASS_COLORS.size()};
-    cv::Scalar const color{cv::Scalar(CLASS_COLORS[idx_color][0U],
-                                      CLASS_COLORS[idx_color][1U],
-                                      CLASS_COLORS[idx_color][2U])};
+    if (show_window_) {
+      size_t const idx_color{obj.id % CLASS_COLORS.size()};
+      color =
+          cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
+                     CLASS_COLORS[idx_color][2U]);
 
-    cv::Rect const rect{
-        static_cast<int>(obj.bounding_box_2d[0U].x),
-        static_cast<int>(obj.bounding_box_2d[0U].y),
-        static_cast<int>(obj.bounding_box_2d[1U].x - obj.bounding_box_2d[0U].x),
-        static_cast<int>(obj.bounding_box_2d[2U].y -
-                         obj.bounding_box_2d[0U].y)};
-    cv::rectangle(res, rect, color, 2);
-#endif
+      rect = cv::Rect{static_cast<int>(obj.bounding_box_2d[0U].x),
+                      static_cast<int>(obj.bounding_box_2d[0U].y),
+                      static_cast<int>(obj.bounding_box_2d[1U].x -
+                                       obj.bounding_box_2d[0U].x),
+                      static_cast<int>(obj.bounding_box_2d[2U].y -
+                                       obj.bounding_box_2d[0U].y)};
+      cv::rectangle(res, rect, color, 2);
+    }
 
     char text[256U];
     class_name = "Unknown";
@@ -188,13 +219,10 @@ void ZedNode::zed_timer_callback() {
 
     if (!std::isnan(obj.position.z)) {
       distance = -obj.position.z;
-
-#ifdef SHOW_WINDOW
-      sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
-              obj.confidence, distance);
-    } else {
-      sprintf(text, "%s - %.1f%%", class_name.c_str(), obj.confidence);
-#endif
+      if (show_window_) {
+        sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
+                obj.confidence, distance);
+      }
     }
 
     zed_interfaces::msg::Obj trk_data;
@@ -207,31 +235,31 @@ void ZedNode::zed_timer_callback() {
 
     det_msg.objects.push_back(trk_data);
 
-#ifdef SHOW_WINDOW
-    if (obj.mask.isInit() && obj.mask.getWidth() > 0U &&
-        obj.mask.getHeight() > 0U) {
-      const cv::Mat obj_mask = slMat2cvMat(obj.mask);
-      mask(rect).setTo(color, obj_mask);
-    }
+    if (show_window_) {
+      if (obj.mask.isInit() && obj.mask.getWidth() > 0U &&
+          obj.mask.getHeight() > 0U) {
+        const cv::Mat obj_mask = slMat2cvMat(obj.mask);
+        mask(rect).setTo(color, obj_mask);
+      }
 
-    int baseLine{0};
-    const cv::Size label_size{
-        cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
-    const int x{rect.x};
-    const int y{std::min(rect.y + 1, res.rows)};
-    cv::rectangle(
-        res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
-        {255, 255, 0}, -1);
-    cv::putText(res, text, cv::Point(x, y + label_size.height),
-                cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
-#endif
+      int baseLine{0};
+      const cv::Size label_size{
+          cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
+      const int x{rect.x};
+      const int y{std::min(rect.y + 1, res.rows)};
+      cv::rectangle(
+          res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
+          {255, 255, 0}, -1);
+      cv::putText(res, text, cv::Point(x, y + label_size.height),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
+    }
   }
 
-#ifdef SHOW_WINDOW
-  cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
-  cv::imshow("ZED", res);
-  int const key{cv::waitKey(1)};
-#endif
+  if (show_window_) {
+    cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
+    cv::imshow("ZED", res);
+    cv::waitKey(1);
+  }
 
   det_pub_->publish(det_msg);
 }

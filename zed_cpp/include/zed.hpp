@@ -26,6 +26,11 @@ class ZedNode : public rclcpp::Node {
 
   void zed_timer_callback();
 
+  bool show_window_;
+  int grab_failure_count_ = 0;
+  std::string zed_publisher_name;
+  std::string onnx_path_;
+
   sl::Camera zed;
   sl::Mat left_sl;
   cv::Mat left_cv;
