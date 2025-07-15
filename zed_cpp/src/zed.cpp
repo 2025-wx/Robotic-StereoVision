@@ -174,7 +174,7 @@ void ZedNode::CameraThreadFunc() {
         grab_failure_count_ = 0;
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
   }
 }
 
