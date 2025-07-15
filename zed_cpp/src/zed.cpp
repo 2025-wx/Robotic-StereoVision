@@ -225,7 +225,7 @@ void ZedNode::InferenceThreadFunc() {
       cv::Scalar color;
 
       if (show_window_) {
-        size_t idx_color = obj.id % CLASS_COLORS.size();
+        size_t const idx_color{obj.id % CLASS_COLORS.size()};
         color =
             cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
                        CLASS_COLORS[idx_color][2U]);
@@ -238,39 +238,44 @@ void ZedNode::InferenceThreadFunc() {
         cv::rectangle(res, rect, color, 2);
       }
 
+      char text[256U];
+      class_name = "Unknown";
+
+      if (obj.raw_label >= 0 &&
+          obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
+        class_name = RSV_CLASSES[obj.raw_label];
+      }
+
+      float distance = -1.0f;
+
+      if (!std::isnan(obj.position.z)) {
+        distance = -obj.position.z;
+        if (show_window_) {
+          sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
+                  obj.confidence, distance);
+        }
+      }
+
       zed_interfaces::msg::Obj trk_data;
       trk_data.label_id = obj.raw_label;
-      trk_data.label =
-          (obj.raw_label >= 0 && obj.raw_label < RSV_CLASSES.size())
-              ? RSV_CLASSES[obj.raw_label]
-              : "Unknown";
+      trk_data.label = class_name;
       trk_data.confidence = obj.confidence;
       trk_data.position[0] = obj.position.x;
       trk_data.position[1] = obj.position.y;
       trk_data.position[2] = obj.position.z;
+
       det_msg.objects.push_back(trk_data);
 
-      if (show_window_ && obj.mask.isInit()) {
-        const cv::Mat obj_mask = slMat2cvMat(obj.mask);
-        mask(rect).setTo(color, obj_mask);
-
-        char text[256U];
-        float distance =
-            (!std::isnan(obj.position.z)) ? -obj.position.z : -1.0f;
-        sprintf(text, "%s - %.1f%% - Dist: %.2fm", trk_data.label.c_str(),
-                trk_data.confidence, distance);
-
-        int baseLine;
-        auto label_size =
-            cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine);
-        int x = rect.x;
-        int y = std::min(rect.y + 1, res.rows);
-        cv::rectangle(
-            res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
-            {255, 255, 0}, -1);
-        cv::putText(res, text, cv::Point(x, y + label_size.height),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 2);
-      }
+      int baseLine{0};
+      const cv::Size label_size{
+          cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
+      const int x{rect.x};
+      const int y{std::min(rect.y + 1, res.rows)};
+      cv::rectangle(
+          res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
+          {255, 255, 0}, -1);
+      cv::putText(res, text, cv::Point(x, y + label_size.height),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
     }
 
     if (show_window_) {
@@ -278,7 +283,6 @@ void ZedNode::InferenceThreadFunc() {
       cv::imshow("ZED", res);
       cv::waitKey(1);
     }
-
     det_pub_->publish(det_msg);
   }
 }
