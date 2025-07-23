@@ -1,3 +1,5 @@
+# Request (empty)
 ---
+# Response
 bool success
 float32[3] position
