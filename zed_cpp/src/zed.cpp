@@ -12,8 +12,8 @@
 #include <thread>
 
 #include "utils.h"
-#include "zed_interfaces/msg/obj.hpp"
-#include "zed_interfaces/msg/trk.hpp"
+// #include "zed_interfaces/msg/obj.hpp"
+// #include "zed_interfaces/msg/trk.hpp"
 
 namespace RoboticStereoVision {
 namespace vision {

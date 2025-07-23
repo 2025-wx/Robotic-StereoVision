@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="robotic_zed">  
+  	<link name="world"/> 
+	<xacro:arg name="camera_name"   default="zed" />
+    <xacro:arg name="camera_model"  default="zedxm" />
+    <xacro:arg name="baseline" default="0.0" />
+	<xacro:include filename="$(find robotic_control)/urdf/robotic_macro.xacro"/>
+	<xacro:include filename="$(find robotic_control)/urdf/gripper_macro.xacro"/>
+	<xacro:include filename="$(find robotic_control)/urdf/zed_macro.urdf.xacro"/>
+	<xacro:zed_camera name="$(arg camera_name)" model="$(arg camera_model)" custom_baseline="$(arg baseline)"/>
+  	<xacro:robotic prefix=""/>
+	<xacro:gripper prefix=""/>
+  	<joint name="fixed_robot" type="fixed">
+    	<parent link="world"/>
+    	<child link="base_link"/>
+  	</joint>
+  	<joint name="fixed_gripper" type="fixed">
+    	<parent link="link_6"/>
+    	<child link="gripper_base_link"/>
+  	</joint>	 
+	<joint name="$(arg camera_name)_joint" type="fixed">
+      <parent link="link_6"/>
+      <child link="$(arg camera_name)_camera_link"/>
+      <origin
+        xyz="-0.08 0.00 0.10"
+        rpy="0.0 -1.5708 -3.141"
+      />
+    </joint> 
+</robot>
+        <!-- rpy="0.01745 -0.00568 -1.524" -->

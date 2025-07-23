@@ -19,6 +19,7 @@ endif()
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Trk.msg"
   "msg/Obj.msg"
+  "srv/SetPos.srv"
 )
 
 ament_package()
