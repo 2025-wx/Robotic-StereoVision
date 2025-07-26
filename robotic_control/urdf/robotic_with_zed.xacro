@@ -22,8 +22,8 @@
       <parent link="link_6"/>
       <child link="$(arg camera_name)_camera_link"/>
       <origin
-        xyz="-0.08 0.00 0.10"
-        rpy="0.0 3.14 0.0"
+        xyz="-0.08 0.00 0.00"
+        rpy="0.0 3.14 1.56"
       />
     </joint> 
 </robot>
