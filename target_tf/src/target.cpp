@@ -46,7 +46,6 @@ void TargetNode::DetSubCallback(const zed_interfaces::msg::Trk::SharedPtr msg) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   if (msg->objects.empty()) {
-    RCLCPP_INFO(this->get_logger(), "Detection result is empty, skipping.");
     return;
   }
 
