@@ -9,12 +9,12 @@ namespace RoboticStereoVision {
 namespace target_tf {
 
 namespace {
-constexpr const char *kTargetServer = "target_server_name";
-constexpr const char *kTargetDefaultServer = "target_server";
-constexpr const char *kZedSubscriber = "zed_subscriber_name";
-constexpr const char *kZedDefaultSubscriber = "/zed/detections";
 constexpr int kTargetLabelId = 1;
 constexpr size_t kMaxTargetHistory = 10;
+constexpr const char *kTargetServer = "target_server_name";
+constexpr const char *kTargetDefaultServer = "target_position";
+constexpr const char *kZedSubscriber = "zed_subscriber_name";
+constexpr const char *kZedDefaultSubscriber = "/zed/detections";
 }  // namespace
 
 TargetNode::TargetNode(const std::string &name)
@@ -22,7 +22,6 @@ TargetNode::TargetNode(const std::string &name)
   std::string sub_topic_name;
   std::string target_server_name;
 
-  // 参数声明与获取
   this->declare_parameter(kZedSubscriber, std::string(kZedDefaultSubscriber));
   this->get_parameter_or(kZedSubscriber, sub_topic_name,
                          std::string(kZedDefaultSubscriber));
@@ -30,12 +29,10 @@ TargetNode::TargetNode(const std::string &name)
   this->get_parameter_or(kTargetServer, target_server_name,
                          std::string(kTargetDefaultServer));
 
-  // 订阅器
   det_sub_ = this->create_subscription<zed_interfaces::msg::Trk>(
       sub_topic_name, 10,
       std::bind(&TargetNode::DetSubCallback, this, std::placeholders::_1));
 
-  // 服务端
   target_server_ = this->create_service<zed_interfaces::srv::SetPos>(
       target_server_name,
       std::bind(&TargetNode::TargetService, this, std::placeholders::_1,
