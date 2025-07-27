@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:include filename="$(find robotic_control)/urdf/common_colours.xacro"/>
+  <xacro:include filename="$(find robotic_config)/urdf/common_colours.xacro"/>
 
   <xacro:macro name="material_yellow" params="name">
     <material name="${name}">

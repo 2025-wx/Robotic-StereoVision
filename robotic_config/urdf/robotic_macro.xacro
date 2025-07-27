@@ -1,9 +1,9 @@
 <?xml version="1.0" ?>
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
 <!-- Include all common properties -->
-  <xacro:include filename="$(find robotic_control)/urdf/common_colours.xacro"/>
-  <xacro:include filename="$(find robotic_control)/urdf/common_constants.xacro"/>
-  <xacro:include filename="$(find robotic_control)/urdf/common_materials.xacro"/>
+  <xacro:include filename="$(find robotic_config)/urdf/common_colours.xacro"/>
+  <xacro:include filename="$(find robotic_config)/urdf/common_constants.xacro"/>
+  <xacro:include filename="$(find robotic_config)/urdf/common_materials.xacro"/>
 <!-- Robot DH parameters define joint-->
 <xacro:property name="d1" value="0.21583" />
 <xacro:property name="d4" value="0.12063" />
@@ -12,21 +12,21 @@
 <xacro:property name="a2" value="-0.28" />
 <xacro:property name="a3" value="-0.26"/>
 <!-- Robot visual and  collision dir-->
-<xacro:property name="visual_base" value="package://robotic_control/meshes/robotic/visual/base_link.stl" />
-<xacro:property name="visual_link1" value="package://robotic_control/meshes/robotic/visual/link1.stl" />
-<xacro:property name="visual_link2" value="package://robotic_control/meshes/robotic/visual/link2.stl" />
-<xacro:property name="visual_link3" value="package://robotic_control/meshes/robotic/visual/link3.stl" />
-<xacro:property name="visual_link4" value="package://robotic_control/meshes/robotic/visual/link4.stl" />
-<xacro:property name="visual_link5" value="package://robotic_control/meshes/robotic/visual/link5.stl" />
-<xacro:property name="visual_link6" value="package://robotic_control/meshes/robotic/visual/link6.stl" />
+<xacro:property name="visual_base" value="package://robotic_config/meshes/robotic/visual/base_link.stl" />
+<xacro:property name="visual_link1" value="package://robotic_config/meshes/robotic/visual/link1.stl" />
+<xacro:property name="visual_link2" value="package://robotic_config/meshes/robotic/visual/link2.stl" />
+<xacro:property name="visual_link3" value="package://robotic_config/meshes/robotic/visual/link3.stl" />
+<xacro:property name="visual_link4" value="package://robotic_config/meshes/robotic/visual/link4.stl" />
+<xacro:property name="visual_link5" value="package://robotic_config/meshes/robotic/visual/link5.stl" />
+<xacro:property name="visual_link6" value="package://robotic_config/meshes/robotic/visual/link6.stl" />
 
-<xacro:property name="collision_base" value="package://robotic_control/meshes/robotic/collision/base_link.stl" />
-<xacro:property name="collision_link1" value="package://robotic_control/meshes/robotic/collision/link1.stl" />
-<xacro:property name="collision_link2" value="package://robotic_control/meshes/robotic/collision/link2.stl" />
-<xacro:property name="collision_link3" value="package://robotic_control/meshes/robotic/collision/link3.stl" />
-<xacro:property name="collision_link4" value="package://robotic_control/meshes/robotic/collision/link4.stl" />
-<xacro:property name="collision_link5" value="package://robotic_control/meshes/robotic/collision/link5.stl" />
-<xacro:property name="collision_link6" value="package://robotic_control/meshes/robotic/collision/link6.stl" />
+<xacro:property name="collision_base" value="package://robotic_config/meshes/robotic/collision/base_link.stl" />
+<xacro:property name="collision_link1" value="package://robotic_config/meshes/robotic/collision/link1.stl" />
+<xacro:property name="collision_link2" value="package://robotic_config/meshes/robotic/collision/link2.stl" />
+<xacro:property name="collision_link3" value="package://robotic_config/meshes/robotic/collision/link3.stl" />
+<xacro:property name="collision_link4" value="package://robotic_config/meshes/robotic/collision/link4.stl" />
+<xacro:property name="collision_link5" value="package://robotic_config/meshes/robotic/collision/link5.stl" />
+<xacro:property name="collision_link6" value="package://robotic_config/meshes/robotic/collision/link6.stl" />
 <!-- Robot link mass-->
 <xacro:property name="mass_link1" value="2.147" />
 <xacro:property name="mass_link2" value="1.972" />

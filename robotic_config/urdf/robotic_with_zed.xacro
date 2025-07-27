@@ -4,9 +4,9 @@
 	<xacro:arg name="camera_name"   default="zed" />
     <xacro:arg name="camera_model"  default="zedxm" />
     <xacro:arg name="baseline" default="0.0" />
-	<xacro:include filename="$(find robotic_control)/urdf/robotic_macro.xacro"/>
-	<xacro:include filename="$(find robotic_control)/urdf/gripper_macro.xacro"/>
-	<xacro:include filename="$(find robotic_control)/urdf/zed_macro.urdf.xacro"/>
+	<xacro:include filename="$(find robotic_config)/urdf/robotic_macro.xacro"/>
+	<xacro:include filename="$(find robotic_config)/urdf/gripper_macro.xacro"/>
+	<xacro:include filename="$(find robotic_config)/urdf/zed_macro.urdf.xacro"/>
 	<xacro:zed_camera name="$(arg camera_name)" model="$(arg camera_model)" custom_baseline="$(arg baseline)"/>
   	<xacro:robotic prefix=""/>
 	<xacro:gripper prefix=""/>
