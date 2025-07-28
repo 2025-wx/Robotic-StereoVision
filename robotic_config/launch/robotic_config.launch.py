@@ -134,11 +134,20 @@ def generate_launch_description():
     joint_state_publisher_condition = LaunchConfiguration('joint_state_publisher')
     # rviz_condition = LaunchConfiguration('rviz')
 
-    robotic_state_publisher_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        parameters=[{'robot_description': robotic_description}],
-        output='screen'
+    static_tf = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="static_transform_publisher",
+        output="log",
+        arguments=["0.0", "0.0", "0.0", "0.0", "0.0", "0.0", "world", "base_link"],
+    )
+
+    robotic_state_publisher = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="both",
+        parameters=[robotic_description],
     )
 
     # joint_state_publisher_gui_node = Node(
@@ -161,7 +170,8 @@ def generate_launch_description():
         robot_ip_arg,
         robotic_interface_node,
         rviz_config_arg,
-        robotic_state_publisher_node,
+        static_tf,
+        robotic_state_publisher,
         run_move_group_node,
         rviz_node
     ])
