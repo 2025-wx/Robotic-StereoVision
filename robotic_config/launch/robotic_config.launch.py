@@ -171,6 +171,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         robot_ip_arg,
+        has_gripper_arg,
         robotic_interface_node,
         rviz_config_arg,
         static_tf,

@@ -48,9 +48,20 @@ GrabbingNode::~GrabbingNode() {
 }
 
 void GrabbingNode::InitMoveGroup() {
-  move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-      shared_from_this(), move_group_name_);
-  move_group_->setPoseReferenceFrame("base_link");
+  try {
+    RCLCPP_INFO(this->get_logger(),
+                "Initializing MoveGroupInterface with group '%s'...",
+                move_group_name_.c_str());
+    move_group_ =
+        std::make_shared<moveit::planning_interface::MoveGroupInterface>(
+            shared_from_this(), move_group_name_);
+    move_group_->setPoseReferenceFrame("base_link");
+    RCLCPP_INFO(this->get_logger(),
+                "MoveGroupInterface initialized successfully.");
+  } catch (const std::exception &e) {
+    RCLCPP_ERROR(this->get_logger(),
+                 "Failed to initialize MoveGroupInterface: %s", e.what());
+  }
 }
 
 void GrabbingNode::RoboticInit() {
