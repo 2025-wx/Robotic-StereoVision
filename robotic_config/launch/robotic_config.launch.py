@@ -41,6 +41,9 @@ def generate_launch_description():
     robot_ip_arg = DeclareLaunchArgument(name='robot_ip')
     robot_ip = LaunchConfiguration('robot_ip')
 
+    has_gripper_arg = DeclareLaunchArgument(name='has_gripper', default_value='false', choices=['true', 'false'])
+    has_gripper = LaunchConfiguration('has_gripper')
+
     robotic_interface_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
@@ -50,7 +53,7 @@ def generate_launch_description():
             ])
         ]),
         launch_arguments={
-            'has_gripper': "false",
+            'has_gripper': has_gripper,
             'robot_ip': robot_ip
         }.items()
     )

@@ -15,7 +15,7 @@
     	<child link="base_link"/>
   	</joint>
   	<joint name="fixed_gripper" type="fixed">
-    	<parent link="link_6"/>
+    	<parent link="tool0"/>
     	<child link="gripper_base_link"/>
   	</joint>	 
 	<joint name="$(arg camera_name)_joint" type="fixed">
