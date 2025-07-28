@@ -17,7 +17,7 @@
 -->
 
 <robot xmlns:xacro="http://wiki.ros.org/xacro">
-  <xacro:include filename="$(find robotic_control)/urdf/materials.urdf.xacro" />
+  <xacro:include filename="$(find robotic_config)/urdf/materials.urdf.xacro" />
   <xacro:property name="M_PI"     value="3.1415926535897931" />
 
   <!--
