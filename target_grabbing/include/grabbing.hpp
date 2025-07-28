@@ -23,16 +23,17 @@ class GrabbingNode : public rclcpp::Node {
  public:
   explicit GrabbingNode(const std::string &name);
   ~GrabbingNode() override;
+  void InitMoveGroup();
 
  private:
   void KeyCallback(const std_msgs::msg::String::SharedPtr msg);
   void RoboticInit();
-  void InitMoveGroup();
   void MoveToInitial();
   void MoveToTarget();
   void TargetGrabbing();
   void StopMotion();
 
+  std::string move_group_name_;
   std::mutex mutex_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
   rclcpp::Client<zed_interfaces::srv::SetPos>::SharedPtr target_client_;

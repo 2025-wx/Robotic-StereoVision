@@ -17,11 +17,11 @@ constexpr const char *kDefaultMoveGroup = "robotic";
 }  // namespace
 
 GrabbingNode::GrabbingNode(const std::string &name) : Node(name) {
-  std::string move_group_name;
+  // std::string move_group_name;
   std::string target_client_name;
   //   std::string move_group_name;
   this->declare_parameter(kMoveGroup, std::string(kDefaultMoveGroup));
-  this->get_parameter_or(kMoveGroup, move_group_name,
+  this->get_parameter_or(kMoveGroup, move_group_name_,
                          std::string(kDefaultMoveGroup));
   this->declare_parameter(kTargetClient, std::string(kTargetDefaultClient));
   this->get_parameter_or(kTargetClient, target_client_name,
