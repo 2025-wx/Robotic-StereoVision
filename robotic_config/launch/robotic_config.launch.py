@@ -56,8 +56,12 @@ def generate_launch_description():
         }.items()
     )
 
-    robotic_description = ParameterValue(Command(['xacro ', str(robotic_model_path)]),
-                                       value_type=str)
+    robotic_description = {
+        "robot_description": ParameterValue(
+            Command(['xacro', str(robotic_model_path)]),
+            value_type=str
+        )
+    }
 
     robotic_description_semantic_config = load_file(
         "robotic_config", "config/robotic.srdf"
@@ -154,7 +158,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         robotic_ip_arg,
-        # robotic_interface_node,
+        robotic_interface_node,
         rviz_config_arg,
         robotic_state_publisher_node,
         run_move_group_node,
