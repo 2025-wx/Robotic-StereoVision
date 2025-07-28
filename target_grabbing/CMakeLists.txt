@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(robotic_config)
+project(target_grabbing)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,9 +7,17 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(moveit_ros_planning_interface REQUIRED)
+find_package(zed_interfaces REQUIRED)
+find_package(lebai_interfaces REQUIRED)
+
+include_directories(
+  include
+)
+
+add_executable(grabbing_node src/main.cpp src/grabbing.cpp)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -23,8 +31,17 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-install(DIRECTORY launch meshes rviz config urdf
-  DESTINATION share/${PROJECT_NAME}
+ament_target_dependencies(grabbing_node
+  rclcpp
+  std_msgs
+  tf2_geometry_msgs
+  moveit_ros_planning_interface
+  zed_interfaces
+  lebai_interfaces
+)
+
+install(TARGETS grabbing_node
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
