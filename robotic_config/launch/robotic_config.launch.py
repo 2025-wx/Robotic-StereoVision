@@ -42,19 +42,19 @@ def generate_launch_description():
     robotic_ip_arg = DeclareLaunchArgument(name='robotic_ip')
     robotic_ip = LaunchConfiguration('robotic_ip')
 
-    # robotic_interface_node = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([
-    #         PathJoinSubstitution([
-    #             FindPackageShare('lebai_driver'),
-    #             'launch',
-    #             'robot_interface.launch.py'
-    #         ])
-    #     ]),
-    #     launch_arguments={
-    #         'has_gripper': "false",
-    #         'robotic_ip': robotic_ip
-    #     }.items()
-    # )
+    robotic_interface_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('lebai_driver'),
+                'launch',
+                'robot_interface.launch.py'
+            ])
+        ]),
+        launch_arguments={
+            'has_gripper': "false",
+            'robotic_ip': robotic_ip
+        }.items()
+    )
 
     robotic_description = ParameterValue(Command(['xacro ', str(robotic_model_path)]),
                                        value_type=str)

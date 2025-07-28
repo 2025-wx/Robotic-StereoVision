@@ -32,11 +32,11 @@ GrabbingNode::GrabbingNode(const std::string &name) : Node(name) {
   target_client_ =
       this->create_client<zed_interfaces::srv::SetPos>(target_client_name);
 
-  move_group_ =
-      std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-          shared_from_this(), move_group_name);
+  // move_group_ =
+  //     std::make_shared<moveit::planning_interface::MoveGroupInterface>(
+  //         shared_from_this(), move_group_name);
 
-  move_group_->setPoseReferenceFrame("base_link");
+  // move_group_->setPoseReferenceFrame("base_link");
 
   key_sub_ = this->create_subscription<std_msgs::msg::String>(
       "/key_input", 10,
@@ -45,6 +45,12 @@ GrabbingNode::GrabbingNode(const std::string &name) : Node(name) {
 
 GrabbingNode::~GrabbingNode() {
   StopMotion();
+}
+
+void GrabbingNode::InitMoveGroup() {
+  move_group_ = std::make_shared<moveit::planning_interface::MoveGroupInterface>(
+      shared_from_this(), move_group_name_);
+  move_group_->setPoseReferenceFrame("base_link");
 }
 
 void GrabbingNode::RoboticInit() {

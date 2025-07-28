@@ -27,6 +27,7 @@ class GrabbingNode : public rclcpp::Node {
  private:
   void KeyCallback(const std_msgs::msg::String::SharedPtr msg);
   void RoboticInit();
+  void InitMoveGroup();
   void MoveToInitial();
   void MoveToTarget();
   void TargetGrabbing();
