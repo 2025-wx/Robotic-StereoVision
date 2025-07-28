@@ -12,6 +12,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+import xacro
 
 def load_file(package_name, file_path):
     package_path = get_package_share_directory(package_name)
@@ -35,7 +36,6 @@ def load_yaml(package_name, file_path):
 
 def generate_launch_description():
     robotic_config_path = get_package_share_path('robotic_config')
-    robotic_model_path = robotic_config_path / 'urdf/robotic_with_zed.xacro'
     default_rviz_config_path = robotic_config_path / 'rviz/view.rviz'
 
     robot_ip_arg = DeclareLaunchArgument(name='robot_ip')
@@ -55,12 +55,14 @@ def generate_launch_description():
         }.items()
     )
 
-    robotic_description = {
-        "robot_description": ParameterValue(
-            Command(['xacro', str(robotic_model_path)]),
-            value_type=str
+    robotic_description_config = xacro.process_file(
+        os.path.join(
+            get_package_share_directory("robotic_config"),
+            "urdf",
+            "robotic_with_zed.xacro",
         )
-    }
+    )
+    robotic_description = {"robot_description": robotic_description_config.toxml()}
 
     robotic_description_semantic_config = load_file(
         "robotic_config", "config/robotic.srdf"
