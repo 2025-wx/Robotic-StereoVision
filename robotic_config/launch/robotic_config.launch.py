@@ -39,8 +39,8 @@ def generate_launch_description():
     robotic_model_path = robotic_config_path / 'urdf/robotic_with_zed.xacro'
     default_rviz_config_path = robotic_config_path / 'rviz/view.rviz'
 
-    robotic_ip_arg = DeclareLaunchArgument(name='robotic_ip')
-    robotic_ip = LaunchConfiguration('robotic_ip')
+    robot_ip_arg = DeclareLaunchArgument(name='robot_ip')
+    robot_ip = LaunchConfiguration('robot_ip')
 
     robotic_interface_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -52,7 +52,7 @@ def generate_launch_description():
         ]),
         launch_arguments={
             'has_gripper': "false",
-            'robotic_ip': robotic_ip
+            'robot_ip': robot_ip
         }.items()
     )
 
@@ -157,7 +157,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        robotic_ip_arg,
+        robot_ip_arg,
         robotic_interface_node,
         rviz_config_arg,
         robotic_state_publisher_node,
