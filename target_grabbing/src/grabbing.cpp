@@ -18,7 +18,7 @@ constexpr const char *kDefaultMoveGroup = "robotic";
 
 GrabbingNode::GrabbingNode(const std::string &name,
                            const rclcpp::NodeOptions &options)
-    : Node(name, options), move_group_(this, "robotic") {
+    : Node(name, options) {
   // std::string move_group_name;
   std::string target_client_name;
   //   std::string move_group_name;
@@ -49,22 +49,22 @@ GrabbingNode::~GrabbingNode() {
   StopMotion();
 }
 
-// void GrabbingNode::InitMoveGroup() {
-//   try {
-//     RCLCPP_INFO(this->get_logger(),
-//                 "Initializing MoveGroupInterface with group '%s'...",
-//                 move_group_name_.c_str());
-//     move_group_ =
-//         std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-//             shared_from_this(), move_group_name_);
-//     move_group_->setPoseReferenceFrame("base_link");
-//     RCLCPP_INFO(this->get_logger(),
-//                 "MoveGroupInterface initialized successfully.");
-//   } catch (const std::exception &e) {
-//     RCLCPP_ERROR(this->get_logger(),
-//                  "Failed to initialize MoveGroupInterface: %s", e.what());
-//   }
-// }
+void GrabbingNode::InitMoveGroup() {
+  try {
+    RCLCPP_INFO(this->get_logger(),
+                "Initializing MoveGroupInterface with group '%s'...",
+                move_group_name_.c_str());
+    move_group_ =
+        std::make_shared<moveit::planning_interface::MoveGroupInterface>(
+            shared_from_this(), move_group_name_);
+    move_group_->setPoseReferenceFrame("base_link");
+    RCLCPP_INFO(this->get_logger(),
+                "MoveGroupInterface initialized successfully.");
+  } catch (const std::exception &e) {
+    RCLCPP_ERROR(this->get_logger(),
+                 "Failed to initialize MoveGroupInterface: %s", e.what());
+  }
+}
 
 void GrabbingNode::RoboticInit() {
   robotic_enable_ =
@@ -145,17 +145,17 @@ void GrabbingNode::MoveToInitial() {
   initial_pose.position.y = 0.0;
   initial_pose.position.z = 0.5;
 
-  move_group_.setPoseTarget(initial_pose);
+  move_group_->setPoseTarget(initial_pose);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success =
-      (move_group_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+      (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
   if (success) {
     RCLCPP_INFO(this->get_logger(),
                 "Initial pose planning succeeded, starting movement...");
     // move_group_->execute(plan);
     bool executed =
-        (move_group_.execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+        (move_group_->execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
     if (!executed) {
       RCLCPP_WARN(this->get_logger(), "Move to initial position failed!");
     } else {
@@ -189,15 +189,15 @@ void GrabbingNode::MoveToTarget() {
   target_pose.position.z = result_target.get()->position[2];
   target_pose.orientation.w = 1.0;
 
-  move_group_.setPoseTarget(target_pose);
+  move_group_->setPoseTarget(target_pose);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
-  if (move_group_.plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
+  if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(),
                 "Target point acquired, starting execution...");
     // move_group_->execute(plan);
     bool executed =
-        (move_group_.execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
+        (move_group_->execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
     if (!executed) {
       RCLCPP_WARN(this->get_logger(), "Move to target position failed!");
     } else {
@@ -238,7 +238,7 @@ void GrabbingNode::TargetGrabbing() {
 
 void GrabbingNode::StopMotion() {
   RCLCPP_WARN(this->get_logger(), "Emergency stop triggered!");
-  move_group_.stop();
+  move_group_->stop();
 }
 
 }  // namespace grabbing

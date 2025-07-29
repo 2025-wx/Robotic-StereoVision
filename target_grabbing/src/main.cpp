@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
   node_options.automatically_declare_parameters_from_overrides(true);
   auto node = std::make_shared<RoboticStereoVision::grabbing::GrabbingNode>(
       "grabbing_node", node_options);
-  // node->InitMoveGroup();
+  node->InitMoveGroup();
   // rclcpp::executors::MultiThreadedExecutor executor;
   // executor.add_node(node);
   rclcpp::spin(node);

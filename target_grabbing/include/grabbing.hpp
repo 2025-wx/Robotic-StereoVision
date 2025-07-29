@@ -19,9 +19,10 @@ namespace grabbing {
 
 class GrabbingNode : public rclcpp::Node {
  public:
-  explicit GrabbingNode(const std::string &name, const rclcpp::NodeOptions &options);
+  explicit GrabbingNode(const std::string &name,
+                        const rclcpp::NodeOptions &options);
   ~GrabbingNode() override;
-//   void InitMoveGroup();
+  void InitMoveGroup();
 
  private:
   void KeyCallback(const std_msgs::msg::String::SharedPtr msg);
@@ -35,7 +36,7 @@ class GrabbingNode : public rclcpp::Node {
   std::mutex mutex_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
   rclcpp::Client<zed_interfaces::srv::SetPos>::SharedPtr target_client_;
-  moveit::planning_interface::MoveGroupInterface move_group_; 
+  std::shared_ptr<moveit::planning_interface::MoveGroupInterface> move_group_;
 
   rclcpp::Client<std_srvs::srv::Empty>::SharedPtr robotic_enable_;
   rclcpp::Client<std_srvs::srv::Empty>::SharedPtr robotic_disable_;
