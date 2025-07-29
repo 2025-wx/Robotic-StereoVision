@@ -119,6 +119,8 @@ def generate_launch_description():
         executable="grabbing_node",
         output="screen",
         parameters=[
+            {"publish_robot_description": True},
+            {"publish_robot_description_semantic": True},
             robotic_description,
             robotic_description_semantic,
             kinematics_yaml,
