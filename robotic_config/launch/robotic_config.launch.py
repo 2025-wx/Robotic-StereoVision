@@ -112,9 +112,9 @@ def generate_launch_description():
         "publish_transforms_updates": True,
     }
 
-    run_move_group_node = Node(
-        package="moveit_ros_move_group",
-        executable="move_group",
+    target_grabbing_node = Node(
+        package="target_grabbing",
+        executable="grabbing_node",
         output="screen",
         parameters=[
             robotic_description,
