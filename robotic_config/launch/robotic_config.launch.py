@@ -12,6 +12,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+from moveit_configs_utils import MoveItConfigsBuilder
 import xacro
 
 def load_file(package_name, file_path):
@@ -79,16 +80,17 @@ def generate_launch_description():
     )
 
     ompl_planning_pipeline_config = {
-        "move_group": {
+        "grabbing_node": {
             "planning_plugin": "ompl_interface/OMPLPlanner",
             "request_adapters": """default_planner_request_adapters/AddTimeOptimalParameterization default_planner_request_adapters/ResolveConstraintFrames default_planner_request_adapters/FixWorkspaceBounds default_planner_request_adapters/FixStartStateBounds default_planner_request_adapters/FixStartStateCollision default_planner_request_adapters/FixStartStatePathConstraints""",
             "start_state_max_bounds_error": 0.1,
         }
     }
+
     ompl_planning_yaml = load_yaml(
         "robotic_config", "config/ompl_planning.yaml"
     )
-    ompl_planning_pipeline_config["move_group"].update(ompl_planning_yaml)
+    ompl_planning_pipeline_config["grabbing_node"].update(ompl_planning_yaml)
 
     moveit_simple_controllers_yaml = load_yaml(
         "robotic_config", "config/controllers.yaml"
