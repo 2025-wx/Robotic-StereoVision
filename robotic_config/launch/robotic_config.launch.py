@@ -112,7 +112,7 @@ def generate_launch_description():
         "publish_transforms_updates": True,
     }
 
-    target_grabbing_node = Node(
+    run_move_group_node = Node(
         package="target_grabbing",
         executable="grabbing_node",
         output="screen",
