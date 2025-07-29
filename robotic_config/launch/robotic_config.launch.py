@@ -131,8 +131,8 @@ def generate_launch_description():
         ],
     )
 
-    rviz_config_arg = DeclareLaunchArgument(name='rvizconfig', default_value=str(default_rviz_config_path),
-                                     description='Absolute path to rviz config file')
+    # rviz_config_arg = DeclareLaunchArgument(name='rvizconfig', default_value=str(default_rviz_config_path),
+    #                                  description='Absolute path to rviz config file')
 
     # joint_state_publisher_arg = DeclareLaunchArgument(name='joint_state_publisher', default_value='true', choices=['true', 'false'],
     #                                 description='Flag to enable joint_state_publisher_gui')
@@ -177,9 +177,9 @@ def generate_launch_description():
         robot_ip_arg,
         has_gripper_arg,
         robotic_interface_node,
-        rviz_config_arg,
+        # rviz_config_arg,
         static_tf,
         robotic_state_publisher,
         run_move_group_node,
-        rviz_node
+        rviz_node,
     ])
