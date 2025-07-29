@@ -11,7 +11,7 @@ namespace {
 constexpr const char *kTargetClient = "target_client_name";
 constexpr const char *kTargetDefaultClient = "target_position";
 constexpr const char *kMoveGroup = "move_group_name";
-constexpr const char *kDefaultMoveGroup = "manipulator";
+constexpr const char *kDefaultMoveGroup = "robotic";
 // constexpr const char *kMoveGroup = "move_group_name";
 // constexpr const char *kDefaultMoveGroup = "robotic";
 }  // namespace

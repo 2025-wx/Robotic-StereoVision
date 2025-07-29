@@ -1,18 +1,16 @@
 import os
 import yaml
-from ament_index_python.packages import get_package_share_path, get_package_share_directory
-
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition, UnlessCondition
-from launch.substitutions import Command, LaunchConfiguration
-from launch.substitutions import PathJoinSubstitution, TextSubstitution
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
+from launch.actions import ExecuteProcess
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution, TextSubstitution
 from launch_ros.substitutions import FindPackageShare
-from moveit_configs_utils import MoveItConfigsBuilder
+from ament_index_python.packages import get_package_share_path, get_package_share_directory
 import xacro
 
 def load_file(package_name, file_path):
@@ -36,9 +34,6 @@ def load_yaml(package_name, file_path):
         return None
 
 def generate_launch_description():
-    robotic_config_path = get_package_share_path('robotic_config')
-    default_rviz_config_path = robotic_config_path / 'rviz/view.rviz'
-
     robot_ip_arg = DeclareLaunchArgument(name='robot_ip')
     robot_ip = LaunchConfiguration('robot_ip')
 
@@ -138,7 +133,7 @@ def generate_launch_description():
     #                                 description='Flag to enable joint_state_publisher_gui')
 
     # model_file= LaunchConfiguration('model')
-    joint_state_publisher_condition = LaunchConfiguration('joint_state_publisher')
+    # joint_state_publisher_condition = LaunchConfiguration('joint_state_publisher')
     # rviz_condition = LaunchConfiguration('rviz')
 
     static_tf = Node(
@@ -164,6 +159,9 @@ def generate_launch_description():
     #     output='screen',
     #     condition=IfCondition(joint_state_publisher_condition),
     # )
+
+    robotic_config_path = get_package_share_path('robotic_config')
+    default_rviz_config_path = robotic_config_path / 'rviz/view.rviz'
 
     rviz_node = Node(
         package='rviz2',
