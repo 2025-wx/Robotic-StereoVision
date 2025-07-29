@@ -3,12 +3,12 @@
 #pragma once
 
 #include <moveit/move_group_interface/move_group_interface.h>
-
 #include <deque>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
+
 #include "lebai_interfaces/srv/set_gripper.hpp"
 #include "std_srvs/srv/empty.hpp"
 #include "zed_interfaces/msg/trk.hpp"
@@ -19,7 +19,7 @@ namespace grabbing {
 
 class GrabbingNode : public rclcpp::Node {
  public:
-  explicit GrabbingNode(const std::string &name);
+  explicit GrabbingNode(const std::string &name, const rclcpp::NodeOptions &options);
   ~GrabbingNode() override;
   void InitMoveGroup();
 

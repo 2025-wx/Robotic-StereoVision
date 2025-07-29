@@ -16,7 +16,8 @@ constexpr const char *kDefaultMoveGroup = "robotic";
 // constexpr const char *kDefaultMoveGroup = "robotic";
 }  // namespace
 
-GrabbingNode::GrabbingNode(const std::string &name) : Node(name) {
+GrabbingNode::GrabbingNode(const std::string &name, const rclcpp::NodeOptions &options)
+    : Node(name, options) {
   // std::string move_group_name;
   std::string target_client_name;
   //   std::string move_group_name;
