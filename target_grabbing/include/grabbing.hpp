@@ -31,7 +31,7 @@ class GrabbingNode : public rclcpp::Node {
   void TargetGrabbing();
   void StopMotion();
 
-//   std::string move_group_name_;
+  std::string move_group_name_;
   std::mutex mutex_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr key_sub_;
   rclcpp::Client<zed_interfaces::srv::SetPos>::SharedPtr target_client_;
