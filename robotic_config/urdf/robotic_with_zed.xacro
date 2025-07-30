@@ -9,7 +9,7 @@
 	<xacro:include filename="$(find robotic_config)/urdf/zed_macro.urdf.xacro"/>
 	<xacro:zed_camera name="$(arg camera_name)" model="$(arg camera_model)" custom_baseline="$(arg baseline)"/>
   	<xacro:robotic prefix=""/>
-	<xacro:gripper prefix=""/>
+	<!-- <xacro:gripper prefix=""/> -->
   	<joint name="fixed_robot" type="fixed">
     	<parent link="world"/>
     	<child link="base_link"/>
