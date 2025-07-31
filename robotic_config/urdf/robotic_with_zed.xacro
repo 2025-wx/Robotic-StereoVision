@@ -5,19 +5,19 @@
     <xacro:arg name="camera_model"  default="zedxm" />
     <xacro:arg name="baseline" default="0.0" />
 	<xacro:include filename="$(find robotic_config)/urdf/robotic_macro.xacro"/>
-	<!-- <xacro:include filename="$(find robotic_config)/urdf/gripper_macro.xacro"/> -->
+	<xacro:include filename="$(find robotic_config)/urdf/gripper_macro.xacro"/>
 	<xacro:include filename="$(find robotic_config)/urdf/zed_macro.urdf.xacro"/>
 	<xacro:zed_camera name="$(arg camera_name)" model="$(arg camera_model)" custom_baseline="$(arg baseline)"/>
   	<xacro:robotic prefix=""/>
-	<!-- <xacro:gripper prefix=""/> -->
+	<xacro:gripper prefix=""/>
   	<joint name="fixed_robot" type="fixed">
     	<parent link="world"/>
     	<child link="base_link"/>
   	</joint>
-  	<!-- <joint name="fixed_gripper" type="fixed">
+  	<joint name="fixed_gripper" type="fixed">
     	<parent link="tool0"/>
     	<child link="gripper_base_link"/>
-  	</joint>	  -->
+  	</joint>	 
 	<joint name="$(arg camera_name)_joint" type="fixed">
       <parent link="link_6"/>
       <child link="$(arg camera_name)_camera_link"/>
