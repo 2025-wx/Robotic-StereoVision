@@ -75,7 +75,7 @@ def generate_launch_description():
     )
 
     ompl_planning_pipeline_config = {
-        "grabbing_node": {
+        "move_group": {
             "planning_plugin": "ompl_interface/OMPLPlanner",
             "request_adapters": """default_planner_request_adapters/AddTimeOptimalParameterization default_planner_request_adapters/ResolveConstraintFrames default_planner_request_adapters/FixWorkspaceBounds default_planner_request_adapters/FixStartStateBounds default_planner_request_adapters/FixStartStateCollision default_planner_request_adapters/FixStartStatePathConstraints""",
             "start_state_max_bounds_error": 0.1,
@@ -85,7 +85,7 @@ def generate_launch_description():
     ompl_planning_yaml = load_yaml(
         "robotic_config", "config/ompl_planning.yaml"
     )
-    ompl_planning_pipeline_config["grabbing_node"].update(ompl_planning_yaml)
+    ompl_planning_pipeline_config["move_group"].update(ompl_planning_yaml)
 
     moveit_simple_controllers_yaml = load_yaml(
         "robotic_config", "config/controllers.yaml"
@@ -110,8 +110,8 @@ def generate_launch_description():
     }
 
     run_move_group_node = Node(
-        package="target_grabbing",
-        executable="grabbing_node",
+        package="moveit_ros_move_group",
+        executable="move_group",
         output="screen",
         parameters=[
             {"publish_robot_description": True},
