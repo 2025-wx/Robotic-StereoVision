@@ -43,7 +43,7 @@ def generate_launch_description():
     robotic_interface_node = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
-                FindPackageShare('lebai_driver'),
+                FindPackageShare('robotic_driver'),
                 'launch',
                 'robot_interface.launch.py'
             ])
