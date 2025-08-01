@@ -42,4 +42,5 @@
     <disable_collisions link1="gripper_l_link2" link2="gripper_base_link" reason="Adjacent"/>
     <disable_collisions link1="gripper_r_link1" link2="gripper_r_link_finger" reason="Adjacent"/>
     <disable_collisions link1="gripper_r_link1" link2="gripper_base_link" reason="Adjacent"/>
+    <disable_collisions link1="link_2" link2="gripper_l_link_finger" reason="Adjacent"/>
 </robot>
