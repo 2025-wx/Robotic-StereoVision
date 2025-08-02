@@ -144,6 +144,7 @@ void GrabbingNode::MoveToInitial() {
   initial_pose.position.x = 0.25;
   initial_pose.position.y = 0.0;
   initial_pose.position.z = 0.5;
+  initial_pose.orientation.w = 1.0;
 
   move_group_->setPoseTarget(initial_pose);
 
