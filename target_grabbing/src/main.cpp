@@ -11,8 +11,6 @@ int main(int argc, char **argv) {
   auto node = std::make_shared<RoboticStereoVision::grabbing::GrabbingNode>(
       "grabbing_node", node_options);
   node->InitMoveGroup();
-  // rclcpp::executors::MultiThreadedExecutor executor;
-  // executor.add_node(node);
   rclcpp::spin(node);
 
   rclcpp::shutdown();
