@@ -45,4 +45,5 @@
     <disable_collisions link1="link_2" link2="gripper_l_link_finger" reason="Adjacent"/>
     <disable_collisions link1="gripper_l_link1" link2="base_link" reason="Never"/>
     <disable_collisions link1="gripper_l_link_finger" link2="base_link" reason="Never"/>
+    <disable_collisions link1="link_3" link2="zed_camera_center" reason="Adjacent"/>
 </robot>
