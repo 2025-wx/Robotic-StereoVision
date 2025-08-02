@@ -29,7 +29,7 @@ GrabbingNode::GrabbingNode(const std::string &name,
   this->get_parameter_or(kTargetClient, target_client_name,
                          std::string(kTargetDefaultClient));
 
-  RoboticInit();
+  // RoboticInit();
 
   target_client_ =
       this->create_client<zed_interfaces::srv::SetPos>(target_client_name);
@@ -75,12 +75,12 @@ void GrabbingNode::RoboticInit() {
   }
   auto request_enable = std::make_shared<std_srvs::srv::Empty::Request>();
   auto result_enable = robotic_enable_->async_send_request(request_enable);
-  if (result_enable.wait_for(std::chrono::seconds(3)) ==
-      std::future_status::ready) {
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_enable) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(), "Robotic init service call succeeded!");
   } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Robotic init service call failed or timed out!");
+    RCLCPP_ERROR(this->get_logger(), "Robotic init service call failed!");
   }
 
   gripper_force_ = this->create_client<lebai_interfaces::srv::SetGripper>(
@@ -94,13 +94,13 @@ void GrabbingNode::RoboticInit() {
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_force->val = 0.0;
   auto result_force = gripper_force_->async_send_request(request_force);
-  if (result_force.wait_for(std::chrono::seconds(3)) ==
-      std::future_status::ready) {
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_force) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(),
                 "Gripper force init service call succeeded!");
   } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Gripper force init service call failed or timed out!");
+    RCLCPP_ERROR(this->get_logger(), "Gripper force init service call failed!");
   }
 
   gripper_position_ = this->create_client<lebai_interfaces::srv::SetGripper>(
@@ -115,13 +115,14 @@ void GrabbingNode::RoboticInit() {
   request_position->val = 0.0;
   auto result_position =
       gripper_position_->async_send_request(request_position);
-  if (result_position.wait_for(std::chrono::seconds(3)) ==
-      std::future_status::ready) {
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_position) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(),
                 "Gripper position init service call succeeded!");
   } else {
     RCLCPP_ERROR(this->get_logger(),
-                 "Gripper position init service call failed or timed out!");
+                 "Gripper position init service call failed!");
   }
 }
 
@@ -173,14 +174,13 @@ void GrabbingNode::MoveToTarget() {
                  kTargetDefaultClient);
     return;
   }
-
   auto request_target =
       std::make_shared<zed_interfaces::srv::SetPos::Request>();
   auto result_target = target_client_->async_send_request(request_target);
-  if (result_target.wait_for(std::chrono::seconds(3)) !=
-      std::future_status::ready) {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Failed to call the service or timed out!");
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_target) !=
+      rclcpp::FutureReturnCode::SUCCESS) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to call the service!");
     return;
   }
 
@@ -196,6 +196,7 @@ void GrabbingNode::MoveToTarget() {
   if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(),
                 "Target point acquired, starting execution...");
+    // move_group_->execute(plan);
     bool executed =
         (move_group_->execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
     if (!executed) {
@@ -214,12 +215,12 @@ void GrabbingNode::TargetGrabbing() {
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_force->val = 0.3;
   auto result_force = gripper_force_->async_send_request(request_force);
-  if (result_force.wait_for(std::chrono::seconds(3)) ==
-      std::future_status::ready) {
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_force) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(), "Gripper force service call succeeded!");
   } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Gripper force service call failed or timed out!");
+    RCLCPP_ERROR(this->get_logger(), "Gripper force service call failed!");
   }
 
   auto request_position =
@@ -227,12 +228,12 @@ void GrabbingNode::TargetGrabbing() {
   request_position->val = 0.3;
   auto result_position =
       gripper_position_->async_send_request(request_position);
-  if (result_position.wait_for(std::chrono::seconds(3)) ==
-      std::future_status::ready) {
+  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
+                                         result_position) ==
+      rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(), "Gripper position service call succeeded!");
   } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Gripper position service call failed or timed out!");
+    RCLCPP_ERROR(this->get_logger(), "Gripper position service call failed!");
   }
 }
 
