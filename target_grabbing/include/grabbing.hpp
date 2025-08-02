@@ -23,10 +23,11 @@ class GrabbingNode : public rclcpp::Node {
                         const rclcpp::NodeOptions &options);
   ~GrabbingNode() override;
   void InitMoveGroup();
+  void RoboticInit();
 
  private:
   void KeyCallback(const std_msgs::msg::String::SharedPtr msg);
-  void RoboticInit();
+  
   void MoveToInitial();
   void MoveToTarget();
   void TargetGrabbing();
