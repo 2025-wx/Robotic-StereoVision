@@ -60,28 +60,36 @@ class TrajectoryActionServer(Node):
         result = FollowJointTrajectory.Result()
         assert isinstance(goal_handle, rclpy.action.server.ServerGoalHandle)
         assert isinstance(goal_handle.request, FollowJointTrajectory.Goal)
+
         if not self.is_valid_traj(goal_handle.request.trajectory):
             result.error_code = FollowJointTrajectory.Result.INVALID_GOAL
             goal_handle.abort()
-            return
+            return result
 
-        # self.send_to_robot(goal_handle.request.trajectory)
-        self.loop_send_to_robot(goal_handle)
-        self.get_logger().info("Wait for trajectory execution finished...")
-        while self.robot_.get_robot_mode() == RobotState.RUNNING or self.robot_.get_robot_mode() == RobotState.PAUSED:
-            if goal_handle.is_cancel_requested:
-                self.robot_.stop_move()
-                result.error_code = 0
-                goal_handle.abort()
-                self.get_logger().info(
-                    'Trajectory execution canceled.')
-                return result
-            time.sleep(0.1)
+        try:
+            self.loop_send_to_robot(goal_handle)
 
-        result.error_code = 0        
-        goal_handle.succeed()
-        self.get_logger().info('Trajectory execution finished.')
+            self.get_logger().info("Wait for trajectory execution finished...")
+            while self.robot_.get_robot_mode() in [RobotState.RUNNING, RobotState.PAUSED]:
+                if goal_handle.is_cancel_requested:
+                    self.robot_.stop_move()
+                    result.error_code = FollowJointTrajectory.Result.SUCCESSFUL
+                    goal_handle.canceled()
+                    self.get_logger().info('Trajectory execution canceled.')
+                    return result
+                time.sleep(0.1)
+
+            result.error_code = FollowJointTrajectory.Result.SUCCESSFUL
+            goal_handle.succeed()
+            self.get_logger().info('Trajectory execution finished.')
+
+        except Exception as e:
+            self.get_logger().error(f"Trajectory execution failed: {str(e)}")
+            result.error_code = FollowJointTrajectory.Result.INVALID_GOAL
+            goal_handle.abort()
+
         return result
+
 
     def cancel_callback(self, goal_handle):
         # assert isinstance(goal_handle, rclpy.action.server.ServerGoalHandle)
