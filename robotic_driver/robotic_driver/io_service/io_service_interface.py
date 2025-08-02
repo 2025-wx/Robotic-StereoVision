@@ -16,7 +16,8 @@ class IOServiceInterface(Node):
         if not self.has_parameter('robot_ip_address'):
             self.get_logger().info('"robot_ip_address" is not assigned.')
             raise ValueError("No 'robot_ip_address' parameter.")
-        self.has_gripper_ = self.get_parameter("has_gripper").get_parameter_value().bool_value
+        # self.has_gripper_ = self.get_parameter("has_gripper").get_parameter_value().bool_value
+        self.has_gripper_ = "true"
         self.robot_ip_ = self.get_parameter('robot_ip_address').get_parameter_value().string_value
         self.robot_ = LebaiRobot(self.robot_ip_, False)
         
