@@ -94,7 +94,7 @@ void GrabbingNode::RoboticInit() {
   }
   auto request_force =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
-  request_force->val = 0.0;
+  request_force->val = 50.0;
   auto result_force = gripper_force_->async_send_request(
       request_force,
       [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
@@ -139,8 +139,10 @@ void GrabbingNode::KeyCallback(const std_msgs::msg::String::SharedPtr msg) {
   } else if (key == 'w') {
     MoveToTarget();
   } else if (key == 'e') {
-    TargetGrabbing();
+    GripperClosed();
   } else if (key == 'r') {
+    GripperOpened();
+  } else if (key == 'd') {
     StopMotion();
   }
 }
@@ -216,26 +218,28 @@ void GrabbingNode::MoveToTarget() {
   }
 }
 
-void GrabbingNode::TargetGrabbing() {
-  auto request_force =
+void GrabbingNode::GripperClosed() {
+  auto request_position =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
-  request_force->val = 0.3;
-  auto result_force = gripper_force_->async_send_request(
-      request_force,
+  request_position->val = 0.0;
+  auto result_position = gripper_position_->async_send_request(
+      request_position,
       [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
                  future) {
         if (future.valid()) {
           RCLCPP_INFO(this->get_logger(),
-                      "Gripper force init service call succeeded!");
+                      "Gripper position init service call succeeded!");
         } else {
           RCLCPP_ERROR(this->get_logger(),
-                       "Gripper force init service call failed!");
+                       "Gripper position init service call failed!");
         }
       });
+}
 
+void GrabbingNode::GripperOpened() {
   auto request_position =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
-  request_position->val = 0.3;
+  request_position->val = 100.0;
   auto result_position = gripper_position_->async_send_request(
       request_position,
       [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture

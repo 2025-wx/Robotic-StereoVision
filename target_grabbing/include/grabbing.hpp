@@ -30,7 +30,8 @@ class GrabbingNode : public rclcpp::Node {
   
   void MoveToInitial();
   void MoveToTarget();
-  void TargetGrabbing();
+  void GripperClosed();
+  void GripperOpened();
   void StopMotion();
 
   std::string move_group_name_;
