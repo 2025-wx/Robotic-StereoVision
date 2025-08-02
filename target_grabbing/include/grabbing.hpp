@@ -27,12 +27,15 @@ class GrabbingNode : public rclcpp::Node {
 
  private:
   void KeyCallback(const std_msgs::msg::String::SharedPtr msg);
-  
+
   void MoveToInitial();
   void MoveToTarget();
   void GripperClosed();
   void GripperOpened();
   void StopMotion();
+
+  void ReadAndPublishKey();
+  bool ReadKeyboardNonBlocking(char &c);
 
   std::string move_group_name_;
   std::mutex mutex_;
@@ -48,6 +51,9 @@ class GrabbingNode : public rclcpp::Node {
   rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedPtr gripper_force_;
   rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedPtr
       gripper_position_;
+
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr key_pub_;
+  rclcpp::TimerBase::SharedPtr timer_;
 };
 
 }  // namespace grabbing

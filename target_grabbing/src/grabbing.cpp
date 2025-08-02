@@ -2,6 +2,10 @@
 
 #include "grabbing.hpp"
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <termios.h>
+#include <unistd.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 namespace RoboticStereoVision {
@@ -12,36 +16,37 @@ constexpr const char *kTargetClient = "target_client_name";
 constexpr const char *kTargetDefaultClient = "target_position";
 constexpr const char *kMoveGroup = "move_group_name";
 constexpr const char *kDefaultMoveGroup = "robotic";
-// constexpr const char *kMoveGroup = "move_group_name";
-// constexpr const char *kDefaultMoveGroup = "robotic";
+constexpr const char *kKeyPublisher = "key_publisher";
+constexpr const char *kDefaultKeyPublisher = "/key_input";
 }  // namespace
 
 GrabbingNode::GrabbingNode(const std::string &name,
                            const rclcpp::NodeOptions &options)
     : Node(name, options) {
-  // std::string move_group_name;
+  std::string key_publisher_name;
   std::string target_client_name;
-  //   std::string move_group_name;
   this->declare_parameter(kMoveGroup, std::string(kDefaultMoveGroup));
   this->get_parameter_or(kMoveGroup, move_group_name_,
                          std::string(kDefaultMoveGroup));
   this->declare_parameter(kTargetClient, std::string(kTargetDefaultClient));
   this->get_parameter_or(kTargetClient, target_client_name,
                          std::string(kTargetDefaultClient));
-
-  // RoboticInit();
+  this->declare_parameter(kKeyPublisher, std::string(kDefaultKeyPublisher));
+  this->get_parameter_or(kKeyPublisher, key_publisher_name,
+                         std::string(kDefaultKeyPublisher));
 
   target_client_ =
       this->create_client<zed_interfaces::srv::SetPos>(target_client_name);
 
-  // move_group_ =
-  //     std::make_shared<moveit::planning_interface::MoveGroupInterface>(
-  //         shared_from_this(), move_group_name);
+  key_pub_ =
+      this->create_publisher<std_msgs::msg::String>(key_publisher_name, 10);
 
-  // move_group_->setPoseReferenceFrame("base_link");
+  timer_ = this->create_wall_timer(
+      std::chrono::milliseconds(50),
+      std::bind(&GrabbingNode::ReadAndPublishKey, this));
 
   key_sub_ = this->create_subscription<std_msgs::msg::String>(
-      "/key_input", 10,
+      key_publisher_name, 10,
       std::bind(&GrabbingNode::KeyCallback, this, std::placeholders::_1));
 }
 
@@ -130,6 +135,35 @@ void GrabbingNode::RoboticInit() {
                        "Gripper position init service call failed!");
         }
       });
+}
+
+void GrabbingNode::ReadAndPublishKey() {
+  char c;
+  if (ReadKeyboardNonBlocking(c)) {
+    std_msgs::msg::String msg;
+    msg.data = std::string(1, c);
+    key_pub_->publish(msg);
+    RCLCPP_INFO(this->get_logger(), "Published key: '%c'", c);
+  }
+}
+
+bool GrabbingNode::ReadKeyboardNonBlocking(char &c) {
+  struct termios oldt, newt;
+  int oldf;
+
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+  int nread = read(STDIN_FILENO, &c, 1);
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+  return nread == 1;
 }
 
 void GrabbingNode::KeyCallback(const std_msgs::msg::String::SharedPtr msg) {
