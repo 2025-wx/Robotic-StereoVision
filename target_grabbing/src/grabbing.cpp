@@ -74,14 +74,16 @@ void GrabbingNode::RoboticInit() {
                 "Waiting for robotic init service /system_service/enable...");
   }
   auto request_enable = std::make_shared<std_srvs::srv::Empty::Request>();
-  auto result_enable = robotic_enable_->async_send_request(request_enable);
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
-                                         result_enable) ==
-      rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(), "Robotic init service call succeeded!");
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "Robotic init service call failed!");
-  }
+  auto result_enable = robotic_enable_->async_send_request(
+      request_enable,
+      [this](rclcpp::Client<std_srvs::srv::Empty>::SharedFuture future) {
+        if (future.valid()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Robotic init service call succeeded!");
+        } else {
+          RCLCPP_ERROR(this->get_logger(), "Robotic init service call failed!");
+        }
+      });
 
   gripper_force_ = this->create_client<lebai_interfaces::srv::SetGripper>(
       "/io_service/set_gripper_force");
@@ -93,15 +95,18 @@ void GrabbingNode::RoboticInit() {
   auto request_force =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_force->val = 0.0;
-  auto result_force = gripper_force_->async_send_request(request_force);
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
-                                         result_force) ==
-      rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(),
-                "Gripper force init service call succeeded!");
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "Gripper force init service call failed!");
-  }
+  auto result_force = gripper_force_->async_send_request(
+      request_force,
+      [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
+                 future) {
+        if (future.valid()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Gripper force init service call succeeded!");
+        } else {
+          RCLCPP_ERROR(this->get_logger(),
+                       "Gripper force init service call failed!");
+        }
+      });
 
   gripper_position_ = this->create_client<lebai_interfaces::srv::SetGripper>(
       "/io_service/set_gripper_position");
@@ -113,17 +118,18 @@ void GrabbingNode::RoboticInit() {
   auto request_position =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_position->val = 0.0;
-  auto result_position =
-      gripper_position_->async_send_request(request_position);
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
-                                         result_position) ==
-      rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(),
-                "Gripper position init service call succeeded!");
-  } else {
-    RCLCPP_ERROR(this->get_logger(),
-                 "Gripper position init service call failed!");
-  }
+  auto result_position = gripper_position_->async_send_request(
+      request_position,
+      [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
+                 future) {
+        if (future.valid()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Gripper position init service call succeeded!");
+        } else {
+          RCLCPP_ERROR(this->get_logger(),
+                       "Gripper position init service call failed!");
+        }
+      });
 }
 
 void GrabbingNode::KeyCallback(const std_msgs::msg::String::SharedPtr msg) {
@@ -214,27 +220,34 @@ void GrabbingNode::TargetGrabbing() {
   auto request_force =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_force->val = 0.3;
-  auto result_force = gripper_force_->async_send_request(request_force);
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
-                                         result_force) ==
-      rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(), "Gripper force service call succeeded!");
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "Gripper force service call failed!");
-  }
+  auto result_force = gripper_force_->async_send_request(
+      request_force,
+      [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
+                 future) {
+        if (future.valid()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Gripper force init service call succeeded!");
+        } else {
+          RCLCPP_ERROR(this->get_logger(),
+                       "Gripper force init service call failed!");
+        }
+      });
 
   auto request_position =
       std::make_shared<lebai_interfaces::srv::SetGripper::Request>();
   request_position->val = 0.3;
-  auto result_position =
-      gripper_position_->async_send_request(request_position);
-  if (rclcpp::spin_until_future_complete(this->get_node_base_interface(),
-                                         result_position) ==
-      rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_INFO(this->get_logger(), "Gripper position service call succeeded!");
-  } else {
-    RCLCPP_ERROR(this->get_logger(), "Gripper position service call failed!");
-  }
+  auto result_position = gripper_position_->async_send_request(
+      request_position,
+      [this](rclcpp::Client<lebai_interfaces::srv::SetGripper>::SharedFuture
+                 future) {
+        if (future.valid()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "Gripper position init service call succeeded!");
+        } else {
+          RCLCPP_ERROR(this->get_logger(),
+                       "Gripper position init service call failed!");
+        }
+      });
 }
 
 void GrabbingNode::StopMotion() {
