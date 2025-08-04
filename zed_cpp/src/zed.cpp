@@ -220,9 +220,10 @@ void ZedNode::InferenceThreadFunc() {
     cv::Mat gs_frame, hsv, eroded, inRange_hsv;
     cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
     cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
-    cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 2);
-    cv::Scalar lower_white(0, 0, 200);
-    cv::Scalar upper_white(180, 30, 255);
+    //cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 2);
+    cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 1);
+    cv::Scalar lower_white(0, 0, 180);
+    cv::Scalar upper_white(180, 60, 255);
     cv::inRange(eroded, lower_white, upper_white, inRange_hsv);
 
     auto det_msg = zed_interfaces::msg::Trk();
@@ -379,6 +380,10 @@ void ZedNode::InferenceThreadFunc() {
 
     if (show_window_) {
       cv::imshow("ZED", res);
+      
+      //cv::namedWindow("2", cv::WINDOW_NORMAL);
+      //cv::resizeWindow("2", 1536, 864);
+      //cv::imshow("2", inRange_hsv);
       cv::waitKey(1);
     }
 
