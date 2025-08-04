@@ -1,10 +1,189 @@
+/** Robotic-StereoVision License **/
+
+#include "zed.hpp"
+
+#include <atomic>
+#include <chrono>
+#include <mutex>
+#include <opencv2/opencv.hpp>
+#include <queue>
+#include <rclcpp/rclcpp.hpp>
+#include <sl/Camera.hpp>
+#include <thread>
+
+#include "utils.h"
+// #include "zed_interfaces/msg/obj.hpp"
+// #include "zed_interfaces/msg/trk.hpp"
+
+namespace RoboticStereoVision {
+namespace vision {
+
+namespace {
+constexpr const char *kShowWindow = "show_window";
+constexpr bool kZedDefaultShowWindow = true;
+constexpr const char *kZedPublisher = "zed_publisher_name";
+constexpr const char *kZedDefaultPublisher = "/zed/detections";
+constexpr const char *kOnnxPath = "onnx_path";
+constexpr const char *kZedDefaultOnnxPath =
+    "/home/nxsuper/rs_ws/src/model_yolov8/yolov8.onnx";
+}  // namespace
+
+ZedNode::ZedNode(const std::string &name) : Node(name) {
+  this->declare_parameter(kShowWindow, kZedDefaultShowWindow);
+  this->get_parameter_or(kShowWindow, show_window_, kZedDefaultShowWindow);
+  this->declare_parameter(kZedPublisher, std::string(kZedDefaultPublisher));
+  this->get_parameter_or(kZedPublisher, zed_publisher_name,
+                         std::string(kZedDefaultPublisher));
+  this->declare_parameter(kOnnxPath, std::string(kZedDefaultOnnxPath));
+  this->get_parameter_or(kOnnxPath, onnx_path_,
+                         std::string(kZedDefaultOnnxPath));
+
+  det_pub_ =
+      this->create_publisher<zed_interfaces::msg::Trk>(zed_publisher_name, 10);
+
+  ZedInit();
+
+  camera_thread_ = std::thread(&ZedNode::CameraThreadFunc, this);
+  inference_thread_ = std::thread(&ZedNode::InferenceThreadFunc, this);
+}
+
+ZedNode::~ZedNode() {
+  running_ = false;
+  if (camera_thread_.joinable()) {
+    camera_thread_.join();
+  }
+  if (inference_thread_.joinable()) {
+    inference_thread_.join();
+  }
+  if (show_window_) {
+    cv::destroyAllWindows();
+  }
+  zed.close();
+}
+
+void ZedNode::ZedInit() {
+  init_parameters.sdk_verbose = true;
+  init_parameters.depth_mode = sl::DEPTH_MODE::NEURAL;
+  init_parameters.coordinate_units = sl::UNIT::METER;
+  init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
+
+  const sl::ERROR_CODE open_ret = zed.open(init_parameters);
+  if (open_ret != sl::ERROR_CODE::SUCCESS) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to open ZED camera!");
+    rclcpp::shutdown();
+  }
+
+  zed.enablePositionalTracking();
+
+  detection_params.enable_tracking = true;
+  detection_params.enable_segmentation = true;
+  detection_params.detection_model =
+      sl::OBJECT_DETECTION_MODEL::CUSTOM_YOLOLIKE_BOX_OBJECTS;
+  detection_params.custom_onnx_file.set(onnx_path_.c_str());
+  detection_params.custom_onnx_dynamic_input_shape = sl::Resolution(320, 320);
+
+  const sl::ERROR_CODE od_ret = zed.enableObjectDetection(detection_params);
+  if (od_ret != sl::ERROR_CODE::SUCCESS) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to enable object detection!");
+    zed.close();
+    rclcpp::shutdown();
+    return;
+  }
+
+  customObjectTracker_rt.object_detection_properties
+      .detection_confidence_threshold = 20.f;
+  printf(
+      "Custom Object Detection runtime parameters: confidence threshold set "
+      "to "
+      "%2.1f for all classes\n",
+      customObjectTracker_rt.object_detection_properties
+          .detection_confidence_threshold);
+
+  customObjectTracker_rt.object_class_detection_properties[0U]
+      .detection_confidence_threshold = 60.f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 0, confidence "
+      "threshold set to %2.1f\n",
+      customObjectTracker_rt.object_class_detection_properties[0U]
+          .detection_confidence_threshold);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .min_box_width_normalized = 0.01f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, min box width "
+      "set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .min_box_width_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .max_box_width_normalized = 0.5f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, max box width "
+      "set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .max_box_width_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .min_box_height_normalized = 0.01f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, min box height "
+      "set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .min_box_height_normalized);
+
+  customObjectTracker_rt.object_class_detection_properties[1U]
+      .max_box_height_normalized = 0.5f;
+  printf(
+      "Custom Object Detection runtime parameters: Label 1, max box height "
+      "set "
+      "to %.2f\n",
+      customObjectTracker_rt.object_class_detection_properties[1U]
+          .max_box_height_normalized);
+
+  if (show_window_) {
+    cv::namedWindow("ZED", cv::WINDOW_NORMAL);
+    cv::resizeWindow("ZED", 1536, 864);
+  }
+}
+
+void ZedNode::CameraThreadFunc() {
+  while (running_) {
+    if (zed.grab() == sl::ERROR_CODE::SUCCESS) {
+      sl::Mat left_sl;
+      zed.retrieveImage(left_sl, sl::VIEW::LEFT);
+      cv::Mat frame = slMat2cvMat(left_sl);
+
+      if (!frame.empty()) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        if (frame_queue_.size() < 5) {
+          frame_queue_.push(frame.clone());
+        }
+      }
+    } else {
+      grab_failure_count_++;
+      RCLCPP_WARN(this->get_logger(), "ZED grab failed (%d times)",
+                  grab_failure_count_);
+      if (grab_failure_count_ >= 30) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "ZED grab failed too many times. Reinitializing.");
+        zed.close();
+        ZedInit();
+        grab_failure_count_ = 0;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
+  }
+}
+
 void ZedNode::InferenceThreadFunc() {
   using clock = std::chrono::steady_clock;
   const std::chrono::milliseconds frame_duration(40);
   auto last_time = clock::now();
   int frame_index = 0;
 
-  // 新增：声明点云 Mat
   sl::Mat point_cloud;
 
   while (running_) {
@@ -33,13 +212,10 @@ void ZedNode::InferenceThreadFunc() {
 
     left_cv = frame;
 
-    // 获取检测对象
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
 
-    // 获取点云
     zed.retrieveMeasure(point_cloud, sl::MEASURE::XYZRGBA);
 
-    // ===== 图像预处理 =====
     cv::Mat gs_frame, hsv, eroded, inRange_hsv;
     cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
     cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
@@ -111,7 +287,6 @@ void ZedNode::InferenceThreadFunc() {
         }
       }
 
-      // ===== 使用点云反投影获取三维坐标 =====
       sl::float4 point3D;
       point_cloud.getValue((int)center_x, (int)center_y, &point3D);
       float world_x = point3D.x;
@@ -138,7 +313,6 @@ void ZedNode::InferenceThreadFunc() {
                 class_name.c_str(), obj.confidence);
       }
 
-      // 填充 ROS 消息 (用反投影坐标替代 obj.position)
       zed_interfaces::msg::Obj trk_data;
       trk_data.label_id = obj.raw_label;
       trk_data.label = class_name;
@@ -169,3 +343,6 @@ void ZedNode::InferenceThreadFunc() {
     det_pub_->publish(det_msg);
   }
 }
+
+}  // namespace vision
+} // namespace RoboticStereoVision
