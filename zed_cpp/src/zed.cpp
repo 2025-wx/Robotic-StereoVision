@@ -182,8 +182,7 @@ void ZedNode::InferenceThreadFunc() {
   using clock = std::chrono::steady_clock;
   const std::chrono::milliseconds frame_duration(40);
   auto last_time = clock::now();
-  int frame_index = 0;  // ����ͼƬ���
-
+  int frame_index = 0;  
   while (running_) {
     auto now = clock::now();
     auto elapsed =
@@ -235,6 +234,8 @@ void ZedNode::InferenceThreadFunc() {
 
       cv::Rect rect;
       cv::Scalar color;
+      float center_x = 0.0f; 
+      float center_y = 0.0f;
       if (show_window_) {
         size_t const idx_color{obj.id % CLASS_COLORS.size()};
         color = cv::Scalar(CLASS_COLORS[idx_color][0U],
@@ -247,11 +248,11 @@ void ZedNode::InferenceThreadFunc() {
                         static_cast<int>(obj.bounding_box_2d[2U].y -
                                          obj.bounding_box_2d[0U].y));
 
-        sl::float2 top_left = obj.bounding_box_2d[0U];    // Top-left vertex
-        sl::float2 bottom_right = obj.bounding_box_2d[2U]; // Bottom-right vertex
+        auto top_left = obj.bounding_box_2d[0U];    // Top-left vertex
+        auto bottom_right = obj.bounding_box_2d[2U]; // Bottom-right vertex
         // Calculate the center point coordinates (average of x and y respectively)
-        float center_x = (top_left.x + bottom_right.x) / 2.0f;
-        float center_y = (top_left.y + bottom_right.y) / 2.0f;
+        center_x = (top_left.x + bottom_right.x) / 2.0f;
+        center_y = (top_left.y + bottom_right.y) / 2.0f;
         if (center_x >= 0 && center_x < inRange_hsv.cols &&
         center_y >= 0 && center_y < inRange_hsv.rows) {
         
