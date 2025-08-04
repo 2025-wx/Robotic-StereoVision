@@ -74,6 +74,7 @@ void ZedNode::ZedInit() {
   }
 
   zed.enablePositionalTracking();
+
   detection_params.enable_tracking = true;
   detection_params.enable_segmentation = true;
   detection_params.detection_model =
@@ -88,6 +89,7 @@ void ZedNode::ZedInit() {
     rclcpp::shutdown();
     return;
   }
+
   customObjectTracker_rt.object_detection_properties
       .detection_confidence_threshold = 20.f;
   printf(
@@ -153,6 +155,7 @@ void ZedNode::CameraThreadFunc() {
       sl::Mat left_sl;
       zed.retrieveImage(left_sl, sl::VIEW::LEFT);
       cv::Mat frame = slMat2cvMat(left_sl);
+
       if (!frame.empty()) {
         std::lock_guard<std::mutex> lock(mtx_);
         if (frame_queue_.size() < 5) {
@@ -171,7 +174,7 @@ void ZedNode::CameraThreadFunc() {
         grab_failure_count_ = 0;
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
   }
 }
 
@@ -198,6 +201,7 @@ void ZedNode::InferenceThreadFunc() {
         frame_queue_.pop();
       }
     }
+
     if (frame.empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
       continue;
@@ -205,20 +209,23 @@ void ZedNode::InferenceThreadFunc() {
 
     left_cv = frame;
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
+
     auto det_msg = zed_interfaces::msg::Trk();
     cv::Mat res, mask;
     if (show_window_) {
       res = left_cv.clone();
       mask = left_cv.clone();
     }
+
     for (const sl::ObjectData &obj : objs.object_list) {
       if (!renderObject(obj, true))
         continue;
 
       cv::Rect rect;
       cv::Scalar color;
+
       if (show_window_) {
-        size_t idx_color = obj.id % CLASS_COLORS.size();
+        size_t const idx_color{obj.id % CLASS_COLORS.size()};
         color =
             cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
                        CLASS_COLORS[idx_color][2U]);
@@ -230,48 +237,55 @@ void ZedNode::InferenceThreadFunc() {
                                          obj.bounding_box_2d[0U].y));
         cv::rectangle(res, rect, color, 2);
       }
+
+      char text[256U];
+      class_name = "Unknown";
+
+      if (obj.raw_label >= 0 &&
+          obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
+        class_name = RSV_CLASSES[obj.raw_label];
+      }
+
+      float distance = -1.0f;
+
+      if (!std::isnan(obj.position.z)) {
+        distance = -obj.position.z;
+        if (show_window_) {
+          sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
+                  obj.confidence, distance);
+        }
+      }
+
       zed_interfaces::msg::Obj trk_data;
       trk_data.label_id = obj.raw_label;
-      trk_data.label =
-          (obj.raw_label >= 0 && obj.raw_label < RSV_CLASSES.size())
-              ? RSV_CLASSES[obj.raw_label]
-              : "Unknown";
+      trk_data.label = class_name;
       trk_data.confidence = obj.confidence;
       trk_data.position[0] = obj.position.x;
       trk_data.position[1] = obj.position.y;
       trk_data.position[2] = obj.position.z;
+
       det_msg.objects.push_back(trk_data);
 
-      if (show_window_ && obj.mask.isInit()) {
-        const cv::Mat obj_mask = slMat2cvMat(obj.mask);
-        mask(rect).setTo(color, obj_mask);
-
-        char text[256U];
-        float distance =
-            (!std::isnan(obj.position.z)) ? -obj.position.z : -1.0f;
-        sprintf(text, "%s - %.1f%% - Dist: %.2fm", trk_data.label.c_str(),
-                trk_data.confidence, distance);
-
-        int baseLine;
-        auto label_size =
-            cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine);
-        int x = rect.x;
-        int y = std::min(rect.y + 1, res.rows);
-        cv::rectangle(
-            res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
-            {255, 255, 0}, -1);
-        cv::putText(res, text, cv::Point(x, y + label_size.height),
-                    cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 2);
-      }
+      int baseLine{0};
+      const cv::Size label_size{
+          cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
+      const int x{rect.x};
+      const int y{std::min(rect.y + 1, res.rows)};
+      cv::rectangle(
+          res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
+          {255, 255, 0}, -1);
+      cv::putText(res, text, cv::Point(x, y + label_size.height),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
     }
+
     if (show_window_) {
       cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
       cv::imshow("ZED", res);
       cv::waitKey(1);
     }
-
     det_pub_->publish(det_msg);
   }
 }
+
 }  // namespace vision
 }  // namespace RoboticStereoVision
