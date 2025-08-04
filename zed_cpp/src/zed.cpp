@@ -182,6 +182,7 @@ void ZedNode::InferenceThreadFunc() {
   using clock = std::chrono::steady_clock;
   const std::chrono::milliseconds frame_duration(40);
   auto last_time = clock::now();
+  int frame_index = 0;  // ����ͼƬ���
 
   while (running_) {
     auto now = clock::now();
@@ -209,45 +210,94 @@ void ZedNode::InferenceThreadFunc() {
 
     left_cv = frame;
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
+    // ===== Image preprocessing =====
+    cv::Mat gs_frame, hsv, eroded, inRange_hsv;
+    // Gaussian blur
+    cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
+    // Convert to HSV color space
+    cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
+    // Erosion processing
+    cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 2);
+    // White color threshold range (adjustable)
+    cv::Scalar lower_white(0, 0, 200);
+    cv::Scalar upper_white(180, 30, 255);
+    // Generate binary image using thresholding
+    cv::inRange(eroded, lower_white, upper_white, inRange_hsv);
+    // Save binary result to file
+    std::string filename = "binary_result_" + std::to_string(frame_index++) + ".jpg";
 
     auto det_msg = zed_interfaces::msg::Trk();
-    cv::Mat res, mask;
-    if (show_window_) {
-      res = left_cv.clone();
-      mask = left_cv.clone();
-    }
+    cv::Mat res = left_cv.clone();
 
-    for (const sl::ObjectData &obj : objs.object_list) {
+    for (const sl::ObjectData & obj : objs.object_list) {
       if (!renderObject(obj, true))
         continue;
 
       cv::Rect rect;
       cv::Scalar color;
-
       if (show_window_) {
         size_t const idx_color{obj.id % CLASS_COLORS.size()};
-        color =
-            cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
-                       CLASS_COLORS[idx_color][2U]);
+        color = cv::Scalar(CLASS_COLORS[idx_color][0U],
+                           CLASS_COLORS[idx_color][1U],
+                           CLASS_COLORS[idx_color][2U]);
         rect = cv::Rect(static_cast<int>(obj.bounding_box_2d[0U].x),
                         static_cast<int>(obj.bounding_box_2d[0U].y),
                         static_cast<int>(obj.bounding_box_2d[1U].x -
                                          obj.bounding_box_2d[0U].x),
                         static_cast<int>(obj.bounding_box_2d[2U].y -
                                          obj.bounding_box_2d[0U].y));
+
+        sl::float2 top_left = obj.bounding_box_2d[0U];    // Top-left vertex
+        sl::float2 bottom_right = obj.bounding_box_2d[2U]; // Bottom-right vertex
+        // Calculate the center point coordinates (average of x and y respectively)
+        float center_x = (top_left.x + bottom_right.x) / 2.0f;
+        float center_y = (top_left.y + bottom_right.y) / 2.0f;
+        if (center_x >= 0 && center_x < inRange_hsv.cols &&
+        center_y >= 0 && center_y < inRange_hsv.rows) {
+        
+        if (inRange_hsv.at<uchar>(center_y, center_x) == 0) {
+
+            bool found = false;
+            const int max_search_radius = 20; 
+            for (int r = 1; r <= max_search_radius && !found; ++r) {
+                for (int dx = -r; dx <= r && !found; ++dx) {
+                    int dy = r - abs(dx);
+                    int nx = center_x + dx;
+                    int ny = center_y - dy;
+                    if (nx >= 0 && nx < inRange_hsv.cols && ny >= 0 && ny < inRange_hsv.rows) {
+                        if (inRange_hsv.at<uchar>(ny, nx) != 0) {
+                            center_x = nx;
+                            center_y = ny;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (dy != 0) {
+                        ny = center_y + dy;
+                        if (nx >= 0 && nx < inRange_hsv.cols && ny >= 0 && ny < inRange_hsv.rows) {
+                            if (inRange_hsv.at<uchar>(ny, nx) != 0) {
+                                center_x = nx;
+                                center_y = ny;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
         cv::rectangle(res, rect, color, 2);
       }
 
       char text[256U];
       class_name = "Unknown";
-
       if (obj.raw_label >= 0 &&
           obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
         class_name = RSV_CLASSES[obj.raw_label];
       }
 
       float distance = -1.0f;
-
       if (!std::isnan(obj.position.z)) {
         distance = -obj.position.z;
         if (show_window_) {
@@ -260,10 +310,9 @@ void ZedNode::InferenceThreadFunc() {
       trk_data.label_id = obj.raw_label;
       trk_data.label = class_name;
       trk_data.confidence = obj.confidence;
-      trk_data.position[0] = obj.position.x;
-      trk_data.position[1] = obj.position.y;
+      trk_data.position[0] = static_cast<float>(center_x);
+      trk_data.position[1] = static_cast<float>(center_y);
       trk_data.position[2] = obj.position.z;
-
       det_msg.objects.push_back(trk_data);
 
       int baseLine{0};
@@ -274,18 +323,19 @@ void ZedNode::InferenceThreadFunc() {
       cv::rectangle(
           res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
           {255, 255, 0}, -1);
-      cv::putText(res, text, cv::Point(x, y + label_size.height),
+      cv::putText(res, text, cv::Point(x, y + label_size.height), 
                   cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
     }
 
     if (show_window_) {
-      cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
       cv::imshow("ZED", res);
       cv::waitKey(1);
     }
+
     det_pub_->publish(det_msg);
   }
 }
 
+
 }  // namespace vision
-}  // namespace RoboticStereoVision
+} // namespace RoboticStereoVision
