@@ -213,7 +213,6 @@ void ZedNode::InferenceThreadFunc() {
     left_cv = frame;
 
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
-
     zed.retrieveMeasure(point_cloud, sl::MEASURE::XYZRGBA);
 
     cv::Mat gs_frame, hsv, eroded, inRange_hsv;
@@ -252,38 +251,64 @@ void ZedNode::InferenceThreadFunc() {
       center_x = (top_left.x + bottom_right.x) / 2.0f;
       center_y = (top_left.y + bottom_right.y) / 2.0f;
 
-      // 二值化修正
       if (center_x >= 0 && center_x < inRange_hsv.cols &&
           center_y >= 0 && center_y < inRange_hsv.rows) {
-        if (inRange_hsv.at<uchar>(center_y, center_x) == 0) {
-          bool found = false;
-          const int max_search_radius = 20; 
-          for (int r = 1; r <= max_search_radius && !found; ++r) {
-            for (int dx = -r; dx <= r && !found; ++dx) {
-              int dy = r - abs(dx);
-              int nx = center_x + dx;
-              int ny = center_y - dy;
-              if (nx >= 0 && nx < inRange_hsv.cols &&
-                  ny >= 0 && ny < inRange_hsv.rows &&
-                  inRange_hsv.at<uchar>(ny, nx) != 0) {
-                center_x = nx;
-                center_y = ny;
-                found = true;
-                break;
-              }
-              if (dy != 0) {
-                ny = center_y + dy;
-                if (nx >= 0 && nx < inRange_hsv.cols &&
-                    ny >= 0 && ny < inRange_hsv.rows &&
-                    inRange_hsv.at<uchar>(ny, nx) != 0) {
-                  center_x = nx;
-                  center_y = ny;
-                  found = true;
-                  break;
-                }
-              }
+
+        bool found = false;
+        int best_dist = 9999;
+        int new_x = center_x, new_y = center_y;
+
+        const int max_search_len = 50; 
+
+        for (int dx = 1; dx <= max_search_len; ++dx) {
+          int nx = center_x + dx;
+          if (nx < inRange_hsv.cols &&
+              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+            if (dx < best_dist) {
+              best_dist = dx;
+              new_x = nx; new_y = center_y;
             }
+            found = true;
+            break;
           }
+          nx = center_x - dx;
+          if (nx >= 0 &&
+              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+            if (dx < best_dist) {
+              best_dist = dx;
+              new_x = nx; new_y = center_y;
+            }
+            found = true;
+            break;
+          }
+        }
+
+        for (int dy = 1; dy <= max_search_len; ++dy) {
+          int ny = center_y + dy;
+          if (ny < inRange_hsv.rows &&
+              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+            if (dy < best_dist) {
+              best_dist = dy;
+              new_x = center_x; new_y = ny;
+            }
+            found = true;
+            break;
+          }
+          ny = center_y - dy;
+          if (ny >= 0 &&
+              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+            if (dy < best_dist) {
+              best_dist = dy;
+              new_x = center_x; new_y = ny;
+            }
+            found = true;
+            break;
+          }
+        }
+
+        if (found) {
+          center_x = new_x;
+          center_y = new_y;
         }
       }
 
@@ -295,6 +320,8 @@ void ZedNode::InferenceThreadFunc() {
 
       cv::rectangle(res, rect, color, 2);
       cv::circle(res, cv::Point((int)center_x, (int)center_y), 4, {0,255,0}, -1);
+      cv::line(res, cv::Point(center_x - 10, center_y), cv::Point(center_x + 10, center_y), {0,255,0}, 1);
+      cv::line(res, cv::Point(center_x, center_y - 10), cv::Point(center_x, center_y + 10), {0,255,0}, 1);
 
       char text[256U];
       class_name = "Unknown";
@@ -305,7 +332,7 @@ void ZedNode::InferenceThreadFunc() {
 
       float distance = -1.0f;
       if (std::isfinite(world_z)) {
-        distance = world_z; 
+        distance = world_z;
         sprintf(text, "%s - %.1f%% - Dist: %.2fm",
                 class_name.c_str(), obj.confidence, distance);
       } else {
@@ -320,7 +347,6 @@ void ZedNode::InferenceThreadFunc() {
       trk_data.position[0] = world_x;
       trk_data.position[1] = world_y;
       trk_data.position[2] = world_z;
-
       det_msg.objects.push_back(trk_data);
 
       int baseLine{0};
@@ -331,7 +357,7 @@ void ZedNode::InferenceThreadFunc() {
       cv::rectangle(
           res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
           {255, 255, 0}, -1);
-      cv::putText(res, text, cv::Point(x, y + label_size.height), 
+      cv::putText(res, text, cv::Point(x, y + label_size.height),
                   cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 2);
     }
 
@@ -343,6 +369,7 @@ void ZedNode::InferenceThreadFunc() {
     det_pub_->publish(det_msg);
   }
 }
+
 
 }  // namespace vision
 } // namespace RoboticStereoVision
