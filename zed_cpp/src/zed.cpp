@@ -212,9 +212,11 @@ void ZedNode::InferenceThreadFunc() {
 
     left_cv = frame;
 
+    // 获取检测对象和点云
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
     zed.retrieveMeasure(point_cloud, sl::MEASURE::XYZRGBA);
 
+    // 二值化
     cv::Mat gs_frame, hsv, eroded, inRange_hsv;
     cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
     cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
@@ -235,6 +237,7 @@ void ZedNode::InferenceThreadFunc() {
       float center_x = 0.0f; 
       float center_y = 0.0f;
 
+      // 绘制颜色和矩形
       size_t const idx_color{obj.id % CLASS_COLORS.size()};
       color = cv::Scalar(CLASS_COLORS[idx_color][0U],
                          CLASS_COLORS[idx_color][1U],
@@ -246,11 +249,13 @@ void ZedNode::InferenceThreadFunc() {
                       static_cast<int>(obj.bounding_box_2d[2U].y -
                                        obj.bounding_box_2d[0U].y));
 
+      // 初始中心点
       auto top_left = obj.bounding_box_2d[0U];    
       auto bottom_right = obj.bounding_box_2d[2U]; 
       center_x = (top_left.x + bottom_right.x) / 2.0f;
       center_y = (top_left.y + bottom_right.y) / 2.0f;
 
+      // ===== 十字搜索法（限制在 bounding_box 内） =====
       if (center_x >= 0 && center_x < inRange_hsv.cols &&
           center_y >= 0 && center_y < inRange_hsv.rows) {
 
@@ -258,12 +263,17 @@ void ZedNode::InferenceThreadFunc() {
         int best_dist = 9999;
         int new_x = center_x, new_y = center_y;
 
-        const int max_search_len = 50; 
+        // 搜索边界（限制在 bounding_box 内）
+        int left_bound   = std::max(rect.x, 0);
+        int right_bound  = std::min(rect.x + rect.width, inRange_hsv.cols - 1);
+        int top_bound    = std::max(rect.y, 0);
+        int bottom_bound = std::min(rect.y + rect.height, inRange_hsv.rows - 1);
 
-        for (int dx = 1; dx <= max_search_len; ++dx) {
+        // 横向搜索
+        for (int dx = 1; (center_x + dx) <= right_bound || (center_x - dx) >= left_bound; ++dx) {
+          // 向右
           int nx = center_x + dx;
-          if (nx < inRange_hsv.cols &&
-              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+          if (nx <= right_bound && inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
             if (dx < best_dist) {
               best_dist = dx;
               new_x = nx; new_y = center_y;
@@ -271,9 +281,9 @@ void ZedNode::InferenceThreadFunc() {
             found = true;
             break;
           }
+          // 向左
           nx = center_x - dx;
-          if (nx >= 0 &&
-              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+          if (nx >= left_bound && inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
             if (dx < best_dist) {
               best_dist = dx;
               new_x = nx; new_y = center_y;
@@ -283,10 +293,11 @@ void ZedNode::InferenceThreadFunc() {
           }
         }
 
-        for (int dy = 1; dy <= max_search_len; ++dy) {
+        // 纵向搜索
+        for (int dy = 1; (center_y + dy) <= bottom_bound || (center_y - dy) >= top_bound; ++dy) {
+          // 向下
           int ny = center_y + dy;
-          if (ny < inRange_hsv.rows &&
-              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+          if (ny <= bottom_bound && inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
             if (dy < best_dist) {
               best_dist = dy;
               new_x = center_x; new_y = ny;
@@ -294,9 +305,9 @@ void ZedNode::InferenceThreadFunc() {
             found = true;
             break;
           }
+          // 向上
           ny = center_y - dy;
-          if (ny >= 0 &&
-              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+          if (ny >= top_bound && inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
             if (dy < best_dist) {
               best_dist = dy;
               new_x = center_x; new_y = ny;
@@ -312,17 +323,20 @@ void ZedNode::InferenceThreadFunc() {
         }
       }
 
+      // 获取三维坐标
       sl::float4 point3D;
       point_cloud.getValue((int)center_x, (int)center_y, &point3D);
       float world_x = point3D.x;
       float world_y = point3D.y;
       float world_z = point3D.z;
 
+      // 绘制矩形和十字
       cv::rectangle(res, rect, color, 2);
       cv::circle(res, cv::Point((int)center_x, (int)center_y), 4, {0,255,0}, -1);
       cv::line(res, cv::Point(center_x - 10, center_y), cv::Point(center_x + 10, center_y), {0,255,0}, 1);
       cv::line(res, cv::Point(center_x, center_y - 10), cv::Point(center_x, center_y + 10), {0,255,0}, 1);
 
+      // 标签信息
       char text[256U];
       class_name = "Unknown";
       if (obj.raw_label >= 0 &&
@@ -340,6 +354,7 @@ void ZedNode::InferenceThreadFunc() {
                 class_name.c_str(), obj.confidence);
       }
 
+      // 发布 ROS 消息
       zed_interfaces::msg::Obj trk_data;
       trk_data.label_id = obj.raw_label;
       trk_data.label = class_name;
@@ -349,6 +364,7 @@ void ZedNode::InferenceThreadFunc() {
       trk_data.position[2] = world_z;
       det_msg.objects.push_back(trk_data);
 
+      // 绘制标签背景和文字
       int baseLine{0};
       const cv::Size label_size{
           cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.4, 1, &baseLine)};
@@ -369,6 +385,7 @@ void ZedNode::InferenceThreadFunc() {
     det_pub_->publish(det_msg);
   }
 }
+
 
 
 }  // namespace vision
