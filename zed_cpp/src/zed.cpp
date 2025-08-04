@@ -182,6 +182,9 @@ void ZedNode::InferenceThreadFunc() {
   using clock = std::chrono::steady_clock;
   const std::chrono::milliseconds frame_duration(40);
   auto last_time = clock::now();
+  int frame_index = 0;
+
+  sl::Mat point_cloud;
 
   while (running_) {
     auto now = clock::now();
@@ -208,62 +211,142 @@ void ZedNode::InferenceThreadFunc() {
     }
 
     left_cv = frame;
+
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
+    zed.retrieveMeasure(point_cloud, sl::MEASURE::XYZRGBA);
+
+    cv::Mat gs_frame, hsv, eroded, inRange_hsv;
+    cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
+    cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
+    cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 2);
+    cv::Scalar lower_white(0, 0, 200);
+    cv::Scalar upper_white(180, 30, 255);
+    cv::inRange(eroded, lower_white, upper_white, inRange_hsv);
 
     auto det_msg = zed_interfaces::msg::Trk();
-    cv::Mat res, mask;
-    if (show_window_) {
-      res = left_cv.clone();
-      mask = left_cv.clone();
-    }
+    cv::Mat res = left_cv.clone();
 
-    for (const sl::ObjectData &obj : objs.object_list) {
+    for (const sl::ObjectData & obj : objs.object_list) {
       if (!renderObject(obj, true))
         continue;
 
       cv::Rect rect;
       cv::Scalar color;
+      float center_x = 0.0f; 
+      float center_y = 0.0f;
 
-      if (show_window_) {
-        size_t const idx_color{obj.id % CLASS_COLORS.size()};
-        color =
-            cv::Scalar(CLASS_COLORS[idx_color][0U], CLASS_COLORS[idx_color][1U],
-                       CLASS_COLORS[idx_color][2U]);
-        rect = cv::Rect(static_cast<int>(obj.bounding_box_2d[0U].x),
-                        static_cast<int>(obj.bounding_box_2d[0U].y),
-                        static_cast<int>(obj.bounding_box_2d[1U].x -
-                                         obj.bounding_box_2d[0U].x),
-                        static_cast<int>(obj.bounding_box_2d[2U].y -
-                                         obj.bounding_box_2d[0U].y));
-        cv::rectangle(res, rect, color, 2);
+      size_t const idx_color{obj.id % CLASS_COLORS.size()};
+      color = cv::Scalar(CLASS_COLORS[idx_color][0U],
+                         CLASS_COLORS[idx_color][1U],
+                         CLASS_COLORS[idx_color][2U]);
+      rect = cv::Rect(static_cast<int>(obj.bounding_box_2d[0U].x),
+                      static_cast<int>(obj.bounding_box_2d[0U].y),
+                      static_cast<int>(obj.bounding_box_2d[1U].x -
+                                       obj.bounding_box_2d[0U].x),
+                      static_cast<int>(obj.bounding_box_2d[2U].y -
+                                       obj.bounding_box_2d[0U].y));
+
+      auto top_left = obj.bounding_box_2d[0U];    
+      auto bottom_right = obj.bounding_box_2d[2U]; 
+      center_x = (top_left.x + bottom_right.x) / 2.0f;
+      center_y = (top_left.y + bottom_right.y) / 2.0f;
+
+      if (center_x >= 0 && center_x < inRange_hsv.cols &&
+          center_y >= 0 && center_y < inRange_hsv.rows) {
+
+        bool found = false;
+        int best_dist = 9999;
+        int new_x = center_x, new_y = center_y;
+
+        const int max_search_len = 50; 
+
+        for (int dx = 1; dx <= max_search_len; ++dx) {
+          int nx = center_x + dx;
+          if (nx < inRange_hsv.cols &&
+              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+            if (dx < best_dist) {
+              best_dist = dx;
+              new_x = nx; new_y = center_y;
+            }
+            found = true;
+            break;
+          }
+          nx = center_x - dx;
+          if (nx >= 0 &&
+              inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+            if (dx < best_dist) {
+              best_dist = dx;
+              new_x = nx; new_y = center_y;
+            }
+            found = true;
+            break;
+          }
+        }
+
+        for (int dy = 1; dy <= max_search_len; ++dy) {
+          int ny = center_y + dy;
+          if (ny < inRange_hsv.rows &&
+              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+            if (dy < best_dist) {
+              best_dist = dy;
+              new_x = center_x; new_y = ny;
+            }
+            found = true;
+            break;
+          }
+          ny = center_y - dy;
+          if (ny >= 0 &&
+              inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+            if (dy < best_dist) {
+              best_dist = dy;
+              new_x = center_x; new_y = ny;
+            }
+            found = true;
+            break;
+          }
+        }
+
+        if (found) {
+          center_x = new_x;
+          center_y = new_y;
+        }
       }
+
+      sl::float4 point3D;
+      point_cloud.getValue((int)center_x, (int)center_y, &point3D);
+      float world_x = point3D.x;
+      float world_y = point3D.y;
+      float world_z = point3D.z;
+
+      cv::rectangle(res, rect, color, 2);
+      cv::circle(res, cv::Point((int)center_x, (int)center_y), 4, {0,255,0}, -1);
+      cv::line(res, cv::Point(center_x - 10, center_y), cv::Point(center_x + 10, center_y), {0,255,0}, 1);
+      cv::line(res, cv::Point(center_x, center_y - 10), cv::Point(center_x, center_y + 10), {0,255,0}, 1);
 
       char text[256U];
       class_name = "Unknown";
-
       if (obj.raw_label >= 0 &&
           obj.raw_label < static_cast<int>(RSV_CLASSES.size())) {
         class_name = RSV_CLASSES[obj.raw_label];
       }
 
       float distance = -1.0f;
-
-      if (!std::isnan(obj.position.z)) {
-        distance = -obj.position.z;
-        if (show_window_) {
-          sprintf(text, "%s - %.1f%% - Dist: %.2fm", class_name.c_str(),
-                  obj.confidence, distance);
-        }
+      if (std::isfinite(world_z)) {
+        distance = world_z;
+        sprintf(text, "%s - %.1f%% - Dist: %.2fm",
+                class_name.c_str(), obj.confidence, distance);
+      } else {
+        sprintf(text, "%s - %.1f%% - Dist: N/A",
+                class_name.c_str(), obj.confidence);
       }
 
       zed_interfaces::msg::Obj trk_data;
       trk_data.label_id = obj.raw_label;
       trk_data.label = class_name;
       trk_data.confidence = obj.confidence;
-      trk_data.position[0] = obj.position.x;
-      trk_data.position[1] = obj.position.y;
-      trk_data.position[2] = obj.position.z;
-
+      trk_data.position[0] = world_x;
+      trk_data.position[1] = world_y;
+      trk_data.position[2] = world_z;
       det_msg.objects.push_back(trk_data);
 
       int baseLine{0};
@@ -275,17 +358,18 @@ void ZedNode::InferenceThreadFunc() {
           res, cv::Rect(x, y, label_size.width, label_size.height + baseLine),
           {255, 255, 0}, -1);
       cv::putText(res, text, cv::Point(x, y + label_size.height),
-                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 4);
+                  cv::FONT_HERSHEY_SIMPLEX, 0.8, {0, 0, 255}, 2);
     }
 
     if (show_window_) {
-      cv::addWeighted(res, 1.0, mask, 0.4, 0.0, res);
       cv::imshow("ZED", res);
       cv::waitKey(1);
     }
+
     det_pub_->publish(det_msg);
   }
 }
 
+
 }  // namespace vision
-}  // namespace RoboticStereoVision
+} // namespace RoboticStereoVision
