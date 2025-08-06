@@ -210,8 +210,20 @@ void ZedNode::InferenceThreadFunc() {
     left_cv = frame;
     zed.retrieveCustomObjects(objs, customObjectTracker_rt);
 
+    sl::Mat point_cloud;
+    zed.retrieveMeasure(point_cloud, sl::MEASURE::XYZRGBA);
+
+    cv::Mat gs_frame, hsv, eroded, inRange_hsv;
+    cv::GaussianBlur(frame, gs_frame, cv::Size(5, 5), 0);
+    cv::cvtColor(gs_frame, hsv, cv::COLOR_BGR2HSV);
+    cv::erode(hsv, eroded, cv::Mat(), cv::Point(-1, -1), 1);
+    cv::Scalar lower_white(0, 0, 180);
+    cv::Scalar upper_white(180, 60, 255);
+    cv::inRange(eroded, lower_white, upper_white, inRange_hsv);
+
     auto det_msg = zed_interfaces::msg::Trk();
     cv::Mat res, mask;
+
     if (show_window_) {
       res = left_cv.clone();
       mask = left_cv.clone();
@@ -223,6 +235,8 @@ void ZedNode::InferenceThreadFunc() {
 
       cv::Rect rect;
       cv::Scalar color;
+      float center_x = 0.0f;
+      float center_y = 0.0f;
 
       if (show_window_) {
         size_t const idx_color{obj.id % CLASS_COLORS.size()};
@@ -231,12 +245,101 @@ void ZedNode::InferenceThreadFunc() {
                        CLASS_COLORS[idx_color][2U]);
         rect = cv::Rect(static_cast<int>(obj.bounding_box_2d[0U].x),
                         static_cast<int>(obj.bounding_box_2d[0U].y),
-                        static_cast<int>(obj.bounding_box_2d[1U].x -
+                        static_cast<int>(obj.bounding_box_2d[2U].x -
                                          obj.bounding_box_2d[0U].x),
                         static_cast<int>(obj.bounding_box_2d[2U].y -
                                          obj.bounding_box_2d[0U].y));
         cv::rectangle(res, rect, color, 2);
       }
+
+      auto upper_left_corner = obj.bounding_box_2d[0U];
+      auto lower_right_corner = obj.bounding_box_2d[2U];
+      center_x = (upper_left_corner.x + lower_right_corner.x) / 2.0f;
+      center_y = (upper_left_corner.y + lower_right_corner.y) / 2.0f;
+
+      bool found = false;
+      uint16_t best_dist = 9999;
+      uint16_t new_x, new_y;
+
+      int left_bound = std::max(rect.x, 0);
+      int right_bound = std::min(rect.x + rect.width, inRange_hsv.cols - 1);
+      int top_bound = std::max(rect.y, 0);
+      int bottom_bound = std::min(rect.y + rect.height, inRange_hsv.rows - 1);
+
+      for (int dx = 1;
+           (center_x + dx) <= right_bound || (center_x - dx) >= left_bound;
+           dx += 2) {
+
+        int nx = center_x + dx;
+        if (nx <= right_bound &&
+            inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+          if (dx < best_dist) {
+            best_dist = dx;
+            new_x = nx;
+            new_y = center_y;
+            found = true;
+          }
+        }
+
+        nx = center_x - dx;
+        if (nx >= left_bound && inRange_hsv.at<uchar>((int)center_y, nx) != 0) {
+          if (dx < best_dist) {
+            best_dist = dx;
+            new_x = nx;
+            new_y = center_y;
+            found = true;
+          }
+          if (found)
+            break;
+        }
+      }
+
+      for (int dy = 1;
+           (center_y + dy) <= bottom_bound || (center_y - dy) >= top_bound;
+           dy += 2) {
+
+        int ny = center_y + dy;
+        if (ny <= bottom_bound &&
+            inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+          if (dy < best_dist) {
+            best_dist = dy;
+            new_x = center_x;
+            new_y = ny;
+            found = true;
+          }
+        }
+
+        ny = center_y - dy;
+        if (ny >= top_bound && inRange_hsv.at<uchar>(ny, (int)center_x) != 0) {
+          if (dy < best_dist) {
+            best_dist = dy;
+            new_x = center_x;
+            new_y = ny;
+            found = true;
+          }
+          if (found)
+            break;
+        }
+      }
+
+      if (found) {
+        center_x = new_x;
+        center_y = new_y;
+      }
+
+      sl::float4 point3D;
+      point_cloud.getValue((int)center_x, (int)center_y, &point3D);
+      float world_x = point3D.x;
+      float world_y = point3D.y;
+      float world_z = point3D.z;
+
+      cv::rectangle(res, rect, color, 2);
+      cv::circle(res, cv::Point((int)center_x, (int)center_y), 4, {0, 255, 0},
+                 -1);
+      cv::line(res, cv::Point(center_x - 10, center_y),
+               cv::Point(center_x + 10, center_y), {0, 255, 0}, 1);
+      cv::line(res, cv::Point(center_x, center_y - 10),
+               cv::Point(center_x, center_y + 10), {0, 255, 0}, 1);
 
       char text[256U];
       class_name = "Unknown";
