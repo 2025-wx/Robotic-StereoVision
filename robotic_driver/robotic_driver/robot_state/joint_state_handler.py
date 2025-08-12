@@ -17,8 +17,8 @@ class JointStateHandler:
         self.joints_name_ = joints_name
         self.gripper_name_ = gripper_name
         self.all_name_ = self.joints_name_
-        if self.gripper_name_:
-            self.all_name_.extend(self.gripper_name_)
+        # if self.gripper_name_:
+        #     self.all_name_.extend(self.gripper_name_)
         self.timer_ = self.node_.create_timer(0.05, self.timer_callback)
         pass
 
@@ -37,15 +37,15 @@ class JointStateHandler:
             joint_state.velocity = list(velocities)
             joint_state.effort = list(torques)
 
-            if self.gripper_name_:
-                amplitude = self.robot_.get_claw_aio('amplitude')
-                angle = 60.0 / 180.0 * math.pi * amplitude / 100.0
-                gripper_position = [angle, -angle, -
-                                    angle, angle, -angle, -angle]
-                joint_state.position.extend(gripper_position)
-                # rospy.logerr("joint_state.position %s"%(joint_state.position))
-                joint_state.velocity.extend([0, 0, 0, 0, 0, 0])
-                joint_state.effort.extend([0, 0, 0, 0, 0, 0])
+            # if self.gripper_name_:
+            #     amplitude = self.robot_.get_claw_aio('amplitude')
+            #     angle = 60.0 / 180.0 * math.pi * amplitude / 100.0
+            #     gripper_position = [angle, -angle, -
+            #                         angle, angle, -angle, -angle]
+            #     joint_state.position.extend(gripper_position)
+            #     # rospy.logerr("joint_state.position %s"%(joint_state.position))
+            #     joint_state.velocity.extend([0, 0, 0, 0, 0, 0])
+            #     joint_state.effort.extend([0, 0, 0, 0, 0, 0])
 
             self.joint_state_pub_.publish(joint_state)
 
