@@ -188,9 +188,21 @@ void GrabbingNode::MoveToInitial() {
   initial_pose.position.z = 0.5;
   initial_pose.orientation.w = 1.0;
 
-  moveit::core::RobotStatePtr current_state = move_group_->getCurrentState();
+  auto start_time = this->now();
+  rclcpp::Duration timeout(5, 0);
 
-  if (!move_group_->waitForCurrentState(rclcpp::Duration(5, 0))) {
+  moveit::core::RobotStatePtr current_state;
+
+  while (rclcpp::ok() && (this->now() - start_time) < timeout) {
+    current_state = move_group_->getCurrentState();
+    if (current_state) {
+      RCLCPP_INFO(this->get_logger(), "The current robot status has been obtained.");
+      break;
+    }
+    rclcpp::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  if (!move_group_->getCurrentState()) {
     RCLCPP_ERROR(this->get_logger(), "Timeout waiting for the robot's current state!");
     return;
   }
