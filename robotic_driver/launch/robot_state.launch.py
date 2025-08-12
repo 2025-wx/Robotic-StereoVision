@@ -34,7 +34,7 @@ def generate_launch_description():
         package='robotic_driver',
         executable='robot_state',
         parameters=[robotic_joint_names, gripper_joint_names,
-                    {"robot_ip_address": robot_ip},{"has_gripper": has_gripper}],
+                    {"robot_ip_address": robot_ip},{"has_gripper": False}],
         output='screen',
     )
 

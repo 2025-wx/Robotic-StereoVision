@@ -188,7 +188,27 @@ void GrabbingNode::MoveToInitial() {
   initial_pose.position.z = 0.5;
   initial_pose.orientation.w = 1.0;
 
-  move_group_->setPoseTarget(initial_pose);
+  moveit::core::RobotStatePtr current_state = move_group_->getCurrentState();
+
+  if (!move_group_->waitForCurrentState(rclcpp::Duration(5, 0))) {
+    RCLCPP_ERROR(this->get_logger(), "Timeout waiting for the robot's current state!");
+    return;
+  }
+
+  const moveit::core::JointModelGroup *joint_model_group =
+      current_state->getJointModelGroup(move_group_->getName());
+
+  bool found_ik = current_state->setFromIK(joint_model_group, initial_pose);
+  if (!found_ik) {
+    RCLCPP_ERROR(this->get_logger(), "IK solution not found for initial pose!");
+    return;
+  }
+
+  std::vector<double> joint_group_positions;
+  current_state->copyJointGroupPositions(joint_model_group,
+                                         joint_group_positions);
+
+  move_group_->setJointValueTarget(joint_group_positions);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   bool success =
@@ -232,13 +252,26 @@ void GrabbingNode::MoveToTarget() {
   target_pose.position.z = result_target.get()->position[2];
   target_pose.orientation.w = 1.0;
 
-  move_group_->setPoseTarget(target_pose);
+  moveit::core::RobotStatePtr current_state = move_group_->getCurrentState();
+  const moveit::core::JointModelGroup *joint_model_group =
+      current_state->getJointModelGroup(move_group_->getName());
+
+  bool found_ik = current_state->setFromIK(joint_model_group, target_pose);
+  if (!found_ik) {
+    RCLCPP_ERROR(this->get_logger(), "IK solution not found for target pose!");
+    return;
+  }
+
+  std::vector<double> joint_group_positions;
+  current_state->copyJointGroupPositions(joint_model_group,
+                                         joint_group_positions);
+
+  move_group_->setJointValueTarget(joint_group_positions);
 
   moveit::planning_interface::MoveGroupInterface::Plan plan;
   if (move_group_->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS) {
     RCLCPP_INFO(this->get_logger(),
                 "Target point acquired, starting execution...");
-    // move_group_->execute(plan);
     bool executed =
         (move_group_->execute(plan) == moveit::core::MoveItErrorCode::SUCCESS);
     if (!executed) {
