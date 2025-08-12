@@ -1,6 +1,7 @@
 from sensor_msgs.msg import JointState
 # from control_msgs.msg import FollowJointTrajectoryFeedback
 from rclpy.node import Node
+from rclpy.clock import Clock, ClockType
 from lebai import LebaiRobot
 import rclpy
 import math
@@ -25,7 +26,7 @@ class JointStateHandler:
     def timer_callback(self):
         if rclpy.ok():
             joint_state = JointState()
-            joint_state.header.stamp = self.node_.get_clock().now().to_msg()
+            joint_state.header.stamp = Clock(clock_type=ClockType.SYSTEM_TIME).now().to_msg()
             joint_state.name = self.all_name_
             # # rospy.logerr("joint_state.name %s"%(joint_state.name))
 
