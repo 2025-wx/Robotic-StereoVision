@@ -365,7 +365,7 @@ void ZedNode::InferenceThreadFunc() {
       trk_data.confidence = obj.confidence;
       trk_data.position[0] = world_x;
       trk_data.position[1] = world_y;
-      trk_data.position[2] = world_z;
+      trk_data.position[2] = obj.position.z;
 
       det_msg.objects.push_back(trk_data);
 
