@@ -116,6 +116,8 @@ def generate_launch_description():
         parameters=[
             {"publish_robot_description": True},
             {"publish_robot_description_semantic": True},
+            {'use_sim_time': False},
+            {'state_monitor_wait_time': 10.0},
             robotic_description,
             robotic_description_semantic,
             kinematics_yaml,
